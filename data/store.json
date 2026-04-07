@@ -6,7 +6,7 @@
       "name": "Pizza do Mario",
       "slug": "pizzadomario",
       "whatsapp": "5511991112233",
-      "plan": "Local + Online",
+      "plan": "Plano Local + Online",
       "active": true,
       "createdAt": "2025-10-10T12:00:00.000Z",
       "canceledAt": null,
@@ -19,7 +19,7 @@
       "logoUrl": "https://picsum.photos/200/200?random=21",
       "coverUrl": "https://picsum.photos/1200/500?random=22",
       "ownerEmail": "mario@pedezap.app",
-      "ownerPassword": "123456",
+      "ownerPassword": "scrypt$ea186baa357222a047e1d204a4d63007$23d40274e79d736682437d12d6edbcaae8ffad571c2b93ee66bd88ed3d69a38444ed941889eaf98cfd208db1ba06a9f0bc015a20e3581471392a28b9f31a2bbc",
       "categories": [
         {
           "id": "cat_pizza_trad",
@@ -90,8 +90,8 @@
       "passwordResetExpiresAt": null,
       "banners": [],
       "marketingCampaigns": [],
-      "viewCount": 0,
-      "lastViewAt": null,
+      "viewCount": 4,
+      "lastViewAt": "2026-02-28T14:17:03.693Z",
       "bioLink": {
         "appearance": "dark",
         "headline": "Nossos links oficiais",
@@ -103,9 +103,21 @@
         "customLabel": "Meu Site",
         "customUrl": ""
       },
-      "latitude": null,
-      "longitude": null,
-      "coupons": []
+      "latitude": -23.4410037,
+      "longitude": -46.5736508,
+      "coupons": [],
+      "panelUsers": [],
+      "deliveryConfig": {
+        "radiusKm": 10,
+        "feeMode": "flat",
+        "distanceBands": [],
+        "neighborhoodRates": [],
+        "pickupEnabled": false,
+        "pickupInstructions": "",
+        "dispatchMode": "manual",
+        "autoDispatchEnabled": false
+      },
+      "taxId": null
     },
     {
       "id": "r_burguercentral",
@@ -210,8 +222,8 @@
       "passwordResetExpiresAt": null,
       "banners": [],
       "marketingCampaigns": [],
-      "viewCount": 4,
-      "lastViewAt": "2026-02-19T17:38:05.419Z",
+      "viewCount": 6,
+      "lastViewAt": "2026-02-28T14:16:54.505Z",
       "taxId": null,
       "bioLink": {
         "appearance": "dark",
@@ -226,18 +238,29 @@
       },
       "latitude": null,
       "longitude": null,
-      "coupons": []
+      "coupons": [],
+      "panelUsers": [],
+      "deliveryConfig": {
+        "radiusKm": 10,
+        "feeMode": "flat",
+        "distanceBands": [],
+        "neighborhoodRates": [],
+        "pickupEnabled": false,
+        "pickupInstructions": "",
+        "dispatchMode": "manual",
+        "autoDispatchEnabled": false
+      }
     },
     {
       "id": "r_jfkpe7d6",
       "name": "Teste 2",
       "slug": "teste2",
       "whatsapp": "24124242142421",
-      "plan": "Plano Local",
+      "plan": "Plano Local + Online",
       "active": true,
       "createdAt": "2026-02-20T03:55:50.264Z",
       "canceledAt": null,
-      "openingHours": "Seg a Dom - 18h as 23h",
+      "openingHours": "Segunda 18:00-23:00 | Terca 18:00-23:00 | Quarta 18:00-23:00 | Quinta 18:00-23:00 | Sexta 18:00-00:00 | Sabado 18:00-00:00 | Domingo 18:00-23:00",
       "address": "Rua joaquim pedro",
       "city": "Rancharia",
       "state": "SP",
@@ -250,8 +273,8 @@
       "ownerEmail": "teste2@gmail.com",
       "ownerPassword": "scrypt$9b5dba77213510c7ec796670eb862499$47fba0ddf8d4cd336c76f4d20ab2df461601427de9e6013742215fb6ccb8928ca1a1d440ef820faa3d3596e3a8e82d7ae3847861e184a9454c88618616e2ce88",
       "taxId": "2",
-      "subscribedPlanId": "plan_local",
-      "subscriptionStatus": "trial",
+      "subscribedPlanId": "plan_local_online",
+      "subscriptionStatus": "expired",
       "trialStartedAt": "2026-02-20T03:55:49.817Z",
       "trialEndsAt": "2026-02-27T03:55:49.817Z",
       "nextBillingAt": null,
@@ -295,12 +318,648 @@
         "customLabel": "Meu Site",
         "customUrl": ""
       },
-      "coupons": []
+      "coupons": [],
+      "panelUsers": [
+        {
+          "id": "mpu_9dgmovse",
+          "name": "teste2",
+          "email": "testefun@gmail.com",
+          "role": "atendente",
+          "status": "Ativo",
+          "password": "scrypt$5ca01b50230e9588dce73eefbba53857$416baa0051c351bf950adc7330ad6bca0be3bccab27afc8599844840469db4eefd512a2ec31310dab60277bf28b0e69d4ad31cd85e2683615fc983c3649e56d5",
+          "permissions": [
+            "dashboard",
+            "orders",
+            "clients",
+            "promotions",
+            "support"
+          ],
+          "createdAt": "2026-02-26T11:01:19.340Z",
+          "lastAccessAt": "2026-02-26T11:01:33.112Z"
+        }
+      ],
+      "deliveryConfig": {
+        "radiusKm": 10,
+        "feeMode": "flat",
+        "distanceBands": [],
+        "neighborhoodRates": [],
+        "pickupEnabled": false,
+        "pickupInstructions": "",
+        "dispatchMode": "manual",
+        "autoDispatchEnabled": false
+      }
+    },
+    {
+      "id": "r_bc13q0y6",
+      "name": "Pizza do Marci",
+      "slug": "marcilio",
+      "whatsapp": "5518997983392",
+      "plan": "Plano Local + Online",
+      "active": true,
+      "createdAt": "2026-02-28T14:27:15.931Z",
+      "canceledAt": null,
+      "openingHours": "Seg a Dom - 18h as 23h",
+      "address": "Rua Sampaio correia",
+      "city": "Marilia",
+      "state": "SP",
+      "latitude": null,
+      "longitude": null,
+      "minOrderValue": 15,
+      "deliveryFee": 5,
+      "logoUrl": "https://picsum.photos/200/200?random=66",
+      "coverUrl": "https://picsum.photos/1200/500?random=67",
+      "ownerEmail": "renan@gmail.com",
+      "ownerPassword": "scrypt$b73632a03a3670f719e1ced4661a92db$927d119d84b0882e80d8bc5e81d3dd87631869309a479ad0d9e0a3c6e75169f8e5cd4438c2ac18808ff6263c4d0cf5bd63c4ccf8a78ae86dcb69efbba13aa401",
+      "taxId": "559595992999",
+      "subscribedPlanId": "plan_local_online",
+      "subscriptionStatus": "expired",
+      "trialStartedAt": "2026-02-28T14:27:15.320Z",
+      "trialEndsAt": "2026-03-07T14:27:15.320Z",
+      "nextBillingAt": null,
+      "subscriptionStartedAt": null,
+      "subscriptionEndsAt": null,
+      "pendingPlanId": null,
+      "pendingCheckoutExternalId": null,
+      "lastCheckoutUrl": null,
+      "viewCount": 0,
+      "lastViewAt": null,
+      "categories": [
+        {
+          "id": "cat_j3gordee",
+          "name": "Categoria 1",
+          "active": true
+        }
+      ],
+      "products": [
+        {
+          "id": "prod_33fgjge6",
+          "categoryId": "cat_j3gordee",
+          "name": "Produto exemplo",
+          "description": "Edite no painel master.",
+          "price": 10,
+          "active": true
+        }
+      ],
+      "openForOrders": true,
+      "passwordResetToken": "315f2e715dbfd5eb72d0aaeea7ae9e252da5dfb32afa0b70",
+      "passwordResetExpiresAt": "2026-02-28T15:28:24.293Z",
+      "banners": [],
+      "marketingCampaigns": [],
+      "coupons": [],
+      "deliveryConfig": {
+        "radiusKm": 10,
+        "feeMode": "flat",
+        "distanceBands": [],
+        "neighborhoodRates": [],
+        "pickupEnabled": false,
+        "pickupInstructions": "",
+        "dispatchMode": "manual",
+        "autoDispatchEnabled": false
+      },
+      "bioLink": {
+        "appearance": "dark",
+        "headline": "Nossos links oficiais",
+        "whatsappEnabled": true,
+        "whatsappValue": "5518997983392",
+        "instagramEnabled": false,
+        "instagramValue": "",
+        "customEnabled": false,
+        "customLabel": "Meu Site",
+        "customUrl": ""
+      },
+      "panelUsers": []
     }
   ],
   "orders": [],
   "customers": [],
   "auditLogs": [
+    {
+      "id": "audit_nvopospg",
+      "createdAt": "2026-03-07T14:37:04.276Z",
+      "action": "admin.twilio.send",
+      "ip": "::1",
+      "actorType": "admin",
+      "actorId": "renan@gmail.com",
+      "actorName": "Renan",
+      "targetType": "twilio_test",
+      "targetId": "settings",
+      "metadata": {
+        "to": "18997983392",
+        "templateId": null,
+        "messageSid": "SMf0d1c7797c2fe00b42df39c3432ad42b"
+      }
+    },
+    {
+      "id": "audit_v48bedl7",
+      "createdAt": "2026-03-07T14:36:42.820Z",
+      "action": "admin.twilio.resend",
+      "ip": "::1",
+      "actorType": "admin",
+      "actorId": "renan@gmail.com",
+      "actorName": "Renan",
+      "targetType": "restaurant_welcome",
+      "targetId": "marcilio",
+      "metadata": {
+        "originalMessageId": "twilio_gzborrvc",
+        "messageSid": "SM419ad222b4074b73f7404f5f500226ee"
+      }
+    },
+    {
+      "id": "audit_1unumqbp",
+      "createdAt": "2026-03-07T14:35:39.490Z",
+      "action": "security.2fa.admin.start",
+      "ip": "::1",
+      "actorType": "admin",
+      "actorId": "renan@gmail.com",
+      "actorName": "Renan",
+      "targetType": "admin_user",
+      "targetId": "renan@gmail.com"
+    },
+    {
+      "id": "audit_lea8zupo",
+      "createdAt": "2026-03-07T14:33:46.253Z",
+      "action": "auth.master.login.success",
+      "ip": "::1",
+      "actorType": "master",
+      "actorId": "pizzadomario",
+      "actorName": "mario@pedezap.app",
+      "targetType": "restaurant",
+      "targetId": "pizzadomario",
+      "metadata": {
+        "role": "owner"
+      }
+    },
+    {
+      "id": "audit_i6fyk9iv",
+      "createdAt": "2026-03-07T14:33:16.415Z",
+      "action": "auth.master.login.blocked_subscription",
+      "ip": "::1",
+      "actorType": "master",
+      "actorId": "marcilio",
+      "actorName": "renan@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "marcilio",
+      "metadata": {
+        "status": "expired"
+      }
+    },
+    {
+      "id": "audit_5m4r3rh9",
+      "createdAt": "2026-03-07T14:31:06.106Z",
+      "action": "auth.master.login.blocked_subscription",
+      "ip": "::1",
+      "actorType": "master",
+      "actorId": "teste2",
+      "actorName": "teste2@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "teste2",
+      "metadata": {
+        "status": "expired"
+      }
+    },
+    {
+      "id": "audit_49q70ayj",
+      "createdAt": "2026-03-07T14:31:02.356Z",
+      "action": "auth.master.login.blocked_subscription",
+      "ip": "::1",
+      "actorType": "master",
+      "actorId": "teste2",
+      "actorName": "teste2@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "teste2",
+      "metadata": {
+        "status": "expired"
+      }
+    },
+    {
+      "id": "audit_28vurljl",
+      "createdAt": "2026-03-07T14:30:58.268Z",
+      "action": "auth.master.login.failed",
+      "ip": "::1",
+      "actorType": "anonymous",
+      "actorId": "anonymous",
+      "actorName": "teste2@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "teste2"
+    },
+    {
+      "id": "audit_nxie9vfj",
+      "createdAt": "2026-03-07T14:30:04.255Z",
+      "action": "auth.master.login.blocked_subscription",
+      "ip": "::1",
+      "actorType": "master",
+      "actorId": "teste2",
+      "actorName": "teste2@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "teste2",
+      "metadata": {
+        "status": "expired"
+      }
+    },
+    {
+      "id": "audit_ztanj66w",
+      "createdAt": "2026-03-07T14:29:42.956Z",
+      "action": "auth.admin.login.success",
+      "ip": "::1",
+      "actorType": "admin",
+      "actorId": "renan@gmail.com",
+      "actorName": "Renan",
+      "targetType": "admin_user",
+      "targetId": "renan@gmail.com",
+      "metadata": {
+        "role": "Admin Master"
+      }
+    },
+    {
+      "id": "audit_hf9vd312",
+      "createdAt": "2026-03-07T14:29:28.915Z",
+      "action": "auth.admin.login.failed",
+      "ip": "::1",
+      "actorType": "anonymous",
+      "actorId": "anonymous",
+      "actorName": "renan@gmail.com",
+      "targetType": "admin_user",
+      "targetId": "renan@gmail.com"
+    },
+    {
+      "id": "audit_m9uhpxr6",
+      "createdAt": "2026-03-07T14:28:59.879Z",
+      "action": "auth.master.login.failed",
+      "ip": "::1",
+      "actorType": "anonymous",
+      "actorId": "anonymous",
+      "actorName": "teste@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "teste@gmail.com"
+    },
+    {
+      "id": "audit_4c6h2qlj",
+      "createdAt": "2026-03-07T14:28:56.693Z",
+      "action": "auth.master.login.failed",
+      "ip": "::1",
+      "actorType": "anonymous",
+      "actorId": "anonymous",
+      "actorName": "teste@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "teste@gmail.com"
+    },
+    {
+      "id": "audit_orwzgu8n",
+      "createdAt": "2026-03-07T14:28:56.261Z",
+      "action": "auth.master.login.failed",
+      "ip": "::1",
+      "actorType": "anonymous",
+      "actorId": "anonymous",
+      "actorName": "teste@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "teste@gmail.com"
+    },
+    {
+      "id": "audit_9k92nmnd",
+      "createdAt": "2026-03-07T14:28:53.023Z",
+      "action": "auth.master.login.blocked_subscription",
+      "ip": "::1",
+      "actorType": "master",
+      "actorId": "teste2",
+      "actorName": "teste2@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "teste2",
+      "metadata": {
+        "status": "expired"
+      }
+    },
+    {
+      "id": "audit_pxhm34rz",
+      "createdAt": "2026-02-28T14:31:46.406Z",
+      "action": "auth.master.login.success",
+      "ip": "::1",
+      "actorType": "master",
+      "actorId": "marcilio",
+      "actorName": "renan@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "marcilio",
+      "metadata": {
+        "role": "owner"
+      }
+    },
+    {
+      "id": "audit_n8hn5zq3",
+      "createdAt": "2026-02-28T14:28:24.294Z",
+      "action": "admin.restaurant.password_reset_link.created",
+      "ip": "::1",
+      "actorType": "admin",
+      "actorId": "renan@gmail.com",
+      "actorName": "Renan",
+      "targetType": "restaurant",
+      "targetId": "marcilio",
+      "metadata": {
+        "expiresAt": "2026-02-28T15:28:24.293Z"
+      }
+    },
+    {
+      "id": "audit_6ablo90s",
+      "createdAt": "2026-02-28T14:27:16.468Z",
+      "action": "admin.twilio.send",
+      "ip": "::1",
+      "actorType": "admin",
+      "actorId": "renan@gmail.com",
+      "actorName": "Renan",
+      "targetType": "restaurant_welcome",
+      "targetId": "marcilio",
+      "metadata": {
+        "to": "5518997983392",
+        "templateId": "tpl_welcome",
+        "messageSid": "SM4358d0574817884a633eb7127620fdc0"
+      }
+    },
+    {
+      "id": "audit_pr2w8126",
+      "createdAt": "2026-02-28T14:24:06.123Z",
+      "action": "admin.twilio.send",
+      "ip": "::1",
+      "actorType": "admin",
+      "actorId": "renan@gmail.com",
+      "actorName": "Renan",
+      "targetType": "twilio_test",
+      "targetId": "settings",
+      "metadata": {
+        "to": "5518997983392",
+        "templateId": null,
+        "messageSid": "SM077abc547d8d72a9595f3093f191b3cd"
+      }
+    },
+    {
+      "id": "audit_atk7ndvg",
+      "createdAt": "2026-02-28T14:23:43.831Z",
+      "action": "admin.twilio.send",
+      "ip": "::1",
+      "actorType": "admin",
+      "actorId": "renan@gmail.com",
+      "actorName": "Renan",
+      "targetType": "twilio_test",
+      "targetId": "settings",
+      "metadata": {
+        "to": "5518997983392",
+        "templateId": null,
+        "messageSid": "SMedfb6eb852fff908599967f298080566"
+      }
+    },
+    {
+      "id": "audit_wvx3ndbu",
+      "createdAt": "2026-02-28T13:35:40.155Z",
+      "action": "auth.admin.login.success",
+      "ip": "::1",
+      "actorType": "admin",
+      "actorId": "renan@gmail.com",
+      "actorName": "Renan",
+      "targetType": "admin_user",
+      "targetId": "renan@gmail.com",
+      "metadata": {
+        "role": "Admin Master"
+      }
+    },
+    {
+      "id": "audit_nexosh3b",
+      "createdAt": "2026-02-28T11:10:26.558Z",
+      "action": "auth.master.login.failed",
+      "ip": "::1",
+      "actorType": "anonymous",
+      "actorId": "anonymous",
+      "actorName": "teste@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "teste@gmail.com"
+    },
+    {
+      "id": "audit_7dpyzqkg",
+      "createdAt": "2026-02-28T11:10:21.888Z",
+      "action": "auth.master.login.failed",
+      "ip": "::1",
+      "actorType": "anonymous",
+      "actorId": "anonymous",
+      "actorName": "teste@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "teste@gmail.com"
+    },
+    {
+      "id": "audit_oq63bbqm",
+      "createdAt": "2026-02-28T11:10:16.451Z",
+      "action": "auth.master.login.failed",
+      "ip": "::1",
+      "actorType": "anonymous",
+      "actorId": "anonymous",
+      "actorName": "teste@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "teste@gmail.com"
+    },
+    {
+      "id": "audit_60hgc0ru",
+      "createdAt": "2026-02-26T14:06:19.520Z",
+      "action": "auth.admin.login.success",
+      "ip": "::1",
+      "actorType": "admin",
+      "actorId": "renan@gmail.com",
+      "actorName": "Renan",
+      "targetType": "admin_user",
+      "targetId": "renan@gmail.com",
+      "metadata": {
+        "role": "Admin Master"
+      }
+    },
+    {
+      "id": "audit_6iulo6k4",
+      "createdAt": "2026-02-26T11:48:52.489Z",
+      "action": "auth.master.login.success",
+      "ip": "::1",
+      "actorType": "master",
+      "actorId": "teste2",
+      "actorName": "teste2@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "teste2",
+      "metadata": {
+        "role": "owner"
+      }
+    },
+    {
+      "id": "audit_1wsdi1dj",
+      "createdAt": "2026-02-26T11:48:44.003Z",
+      "action": "auth.master.login.failed",
+      "ip": "::1",
+      "actorType": "anonymous",
+      "actorId": "anonymous",
+      "actorName": "teste@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "teste@gmail.com"
+    },
+    {
+      "id": "audit_t6hb9rxf",
+      "createdAt": "2026-02-26T11:48:38.283Z",
+      "action": "auth.master.login.failed",
+      "ip": "::1",
+      "actorType": "anonymous",
+      "actorId": "anonymous",
+      "actorName": "teste@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "teste@gmail.com"
+    },
+    {
+      "id": "audit_0jkdmboa",
+      "createdAt": "2026-02-26T11:48:37.300Z",
+      "action": "auth.master.login.failed",
+      "ip": "::1",
+      "actorType": "anonymous",
+      "actorId": "anonymous",
+      "actorName": "teste@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "teste@gmail.com"
+    },
+    {
+      "id": "audit_17as0yih",
+      "createdAt": "2026-02-26T11:48:33.101Z",
+      "action": "auth.master.login.failed",
+      "ip": "::1",
+      "actorType": "anonymous",
+      "actorId": "anonymous",
+      "actorName": "teste@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "teste@gmail.com"
+    },
+    {
+      "id": "audit_z9c74vtt",
+      "createdAt": "2026-02-26T11:01:33.112Z",
+      "action": "auth.master.login.success",
+      "ip": "::1",
+      "actorType": "master",
+      "actorId": "mpu_9dgmovse",
+      "actorName": "testefun@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "teste2",
+      "metadata": {
+        "role": "atendente"
+      }
+    },
+    {
+      "id": "audit_wbshtbzh",
+      "createdAt": "2026-02-26T11:01:19.340Z",
+      "action": "security.master_user.create",
+      "ip": "::1",
+      "actorType": "master",
+      "actorId": "owner:teste2",
+      "actorName": "Teste 2",
+      "targetType": "restaurant_panel_user",
+      "targetId": "testefun@gmail.com",
+      "metadata": {
+        "restaurantSlug": "teste2",
+        "role": "atendente"
+      }
+    },
+    {
+      "id": "audit_c3nlnbwf",
+      "createdAt": "2026-02-26T11:00:25.012Z",
+      "action": "auth.master.login.success",
+      "ip": "::1",
+      "actorType": "master",
+      "actorId": "teste2",
+      "actorName": "teste2@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "teste2",
+      "metadata": {
+        "role": "owner"
+      }
+    },
+    {
+      "id": "audit_scvyuuch",
+      "createdAt": "2026-02-25T19:13:50.030Z",
+      "action": "auth.master.login.success",
+      "ip": "::1",
+      "actorType": "master",
+      "actorId": "teste2",
+      "actorName": "teste2@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "teste2"
+    },
+    {
+      "id": "audit_cvvquq1w",
+      "createdAt": "2026-02-25T19:13:46.555Z",
+      "action": "auth.master.login.failed",
+      "ip": "::1",
+      "actorType": "anonymous",
+      "actorId": "anonymous",
+      "actorName": "teste2@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "teste2"
+    },
+    {
+      "id": "audit_epk1jqi8",
+      "createdAt": "2026-02-25T19:13:38.225Z",
+      "action": "auth.master.login.failed",
+      "ip": "::1",
+      "actorType": "anonymous",
+      "actorId": "anonymous",
+      "actorName": "testeteste2@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "testeteste2@gmail.com"
+    },
+    {
+      "id": "audit_wvtbbh2u",
+      "createdAt": "2026-02-25T19:12:29.934Z",
+      "action": "auth.admin.login.success",
+      "ip": "::1",
+      "actorType": "admin",
+      "actorId": "renan@gmail.com",
+      "actorName": "Renan",
+      "targetType": "admin_user",
+      "targetId": "renan@gmail.com",
+      "metadata": {
+        "role": "Admin Master"
+      }
+    },
+    {
+      "id": "audit_pz96ebmv",
+      "createdAt": "2026-02-25T19:12:28.364Z",
+      "action": "auth.admin.login.failed",
+      "ip": "::1",
+      "actorType": "anonymous",
+      "actorId": "anonymous",
+      "actorName": "renan@gmail.com",
+      "targetType": "admin_user",
+      "targetId": "renan@gmail.com"
+    },
+    {
+      "id": "audit_87su5b7y",
+      "createdAt": "2026-02-24T18:25:45.916Z",
+      "action": "auth.master.login.success",
+      "ip": "::1",
+      "actorType": "master",
+      "actorId": "teste2",
+      "actorName": "teste2@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "teste2"
+    },
+    {
+      "id": "audit_v4x63z22",
+      "createdAt": "2026-02-24T18:25:43.108Z",
+      "action": "auth.master.login.failed",
+      "ip": "::1",
+      "actorType": "anonymous",
+      "actorId": "anonymous",
+      "actorName": "teste2@gmail.com",
+      "targetType": "restaurant",
+      "targetId": "teste2"
+    },
+    {
+      "id": "audit_0emz9ei7",
+      "createdAt": "2026-02-24T18:24:54.947Z",
+      "action": "auth.admin.login.success",
+      "ip": "::1",
+      "actorType": "admin",
+      "actorId": "renan@gmail.com",
+      "actorName": "Renan",
+      "targetType": "admin_user",
+      "targetId": "renan@gmail.com",
+      "metadata": {
+        "role": "Admin Master"
+      }
+    },
     {
       "id": "audit_c2j3k3hb",
       "createdAt": "2026-02-21T14:58:36.177Z",
@@ -746,6 +1405,39 @@
       "targetId": "desertobrbr@gmail.com"
     }
   ],
+  "activeSessions": [
+    {
+      "id": "sess_5ij7g883",
+      "kind": "master",
+      "sessionId": "b05ed61b1faf466df6f2811c4e4abfa1cb419c1a6de7e2d0c029da77c159466c",
+      "subjectId": "pizzadomario",
+      "subjectName": "pizzadomario",
+      "actorEmail": "mario@pedezap.app",
+      "restaurantSlug": "pizzadomario",
+      "role": "Owner",
+      "ip": "::1",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
+      "createdAt": "2026-03-07T14:33:46.264Z",
+      "lastSeenAt": "2026-03-07T14:33:59.506Z",
+      "expiresAt": "2026-03-08T02:33:46.000Z",
+      "revokedAt": null
+    },
+    {
+      "id": "sess_91cxjgti",
+      "kind": "admin",
+      "sessionId": "7abeeb72b68f3084106cc41601a6f95eab7b3af33803b0bb50027c8613fd8f1a",
+      "subjectId": "renan@gmail.com",
+      "subjectName": "Renan",
+      "actorEmail": "renan@gmail.com",
+      "role": "Admin Master",
+      "ip": "::1",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
+      "createdAt": "2026-03-07T14:29:42.964Z",
+      "lastSeenAt": "2026-03-07T14:29:42.964Z",
+      "expiresAt": "2026-03-08T02:29:42.000Z",
+      "revokedAt": "2026-03-07T15:38:26.572Z"
+    }
+  ],
   "invoices": [
     {
       "id": "INV-001",
@@ -772,6 +1464,78 @@
       "paidAt": null
     }
   ],
+  "twilioMessages": [
+    {
+      "id": "twilio_pjmmmy4z",
+      "to": "18997983392",
+      "from": "whatsapp:+14155238886",
+      "body": "Ola! Esta e uma mensagem de teste enviada pelo modulo Twilio do PedeZap.",
+      "templateId": null,
+      "targetType": "twilio_test",
+      "targetId": "settings",
+      "status": "queued",
+      "messageSid": "SMf0d1c7797c2fe00b42df39c3432ad42b",
+      "errorMessage": null,
+      "createdAt": "2026-03-07T14:37:04.274Z",
+      "updatedAt": "2026-03-07T14:37:04.274Z"
+    },
+    {
+      "id": "twilio_pgcxibeg",
+      "to": "5518997983392",
+      "from": "whatsapp:+14155238886",
+      "body": "Ola Pizza do Marci! Sua conta no PedeZap foi ativada com sucesso. Acesse seu painel em: http://localhost:3000/master/login",
+      "templateId": "tpl_welcome",
+      "targetType": "restaurant_welcome",
+      "targetId": "marcilio",
+      "status": "queued",
+      "messageSid": "SM419ad222b4074b73f7404f5f500226ee",
+      "errorMessage": null,
+      "createdAt": "2026-03-07T14:36:42.816Z",
+      "updatedAt": "2026-03-07T14:36:42.816Z"
+    },
+    {
+      "id": "twilio_gzborrvc",
+      "to": "5518997983392",
+      "from": "whatsapp:+14155238886",
+      "body": "Ola Pizza do Marci! Sua conta no PedeZap foi ativada com sucesso. Acesse seu painel em: http://localhost:3000/master/login",
+      "templateId": "tpl_welcome",
+      "targetType": "restaurant_welcome",
+      "targetId": "marcilio",
+      "status": "queued",
+      "messageSid": "SM4358d0574817884a633eb7127620fdc0",
+      "errorMessage": null,
+      "createdAt": "2026-02-28T14:27:16.467Z",
+      "updatedAt": "2026-02-28T14:27:16.467Z"
+    },
+    {
+      "id": "twilio_kfgl2hwe",
+      "to": "5518997983392",
+      "from": "whatsapp:+14155238886",
+      "body": "Ola! Bom dia",
+      "templateId": null,
+      "targetType": "twilio_test",
+      "targetId": "settings",
+      "status": "queued",
+      "messageSid": "SM077abc547d8d72a9595f3093f191b3cd",
+      "errorMessage": null,
+      "createdAt": "2026-02-28T14:24:06.122Z",
+      "updatedAt": "2026-02-28T14:24:06.122Z"
+    },
+    {
+      "id": "twilio_zkzxlu6a",
+      "to": "5518997983392",
+      "from": "whatsapp:+14155238886",
+      "body": "Ola! Esta e uma mensagem de teste enviada pelo modulo Twilio do PedeZap.",
+      "templateId": null,
+      "targetType": "twilio_test",
+      "targetId": "settings",
+      "status": "queued",
+      "messageSid": "SMedfb6eb852fff908599967f298080566",
+      "errorMessage": null,
+      "createdAt": "2026-02-28T14:23:43.829Z",
+      "updatedAt": "2026-02-28T14:23:43.829Z"
+    }
+  ],
   "adminUsers": [
     {
       "id": "adm_master",
@@ -793,7 +1557,10 @@
         "security"
       ],
       "createdAt": "2025-10-01T12:00:00.000Z",
-      "lastAccessAt": null
+      "lastAccessAt": null,
+      "twoFactorEnabled": false,
+      "twoFactorSecret": null,
+      "twoFactorPendingSecret": null
     },
     {
       "id": "adm_fin",
@@ -806,7 +1573,10 @@
         "financial"
       ],
       "createdAt": "2025-11-10T12:00:00.000Z",
-      "lastAccessAt": "2026-02-04T18:00:00.000Z"
+      "lastAccessAt": "2026-02-04T18:00:00.000Z",
+      "twoFactorEnabled": false,
+      "twoFactorSecret": null,
+      "twoFactorPendingSecret": null
     },
     {
       "id": "adm_sup",
@@ -819,7 +1589,10 @@
         "support"
       ],
       "createdAt": "2025-12-01T12:00:00.000Z",
-      "lastAccessAt": "2026-02-05T12:15:00.000Z"
+      "lastAccessAt": "2026-02-05T12:15:00.000Z",
+      "twoFactorEnabled": false,
+      "twoFactorSecret": null,
+      "twoFactorPendingSecret": null
     },
     {
       "id": "adm_ops",
@@ -833,7 +1606,10 @@
         "leads"
       ],
       "createdAt": "2025-09-20T12:00:00.000Z",
-      "lastAccessAt": "2025-10-20T12:00:00.000Z"
+      "lastAccessAt": "2025-10-20T12:00:00.000Z",
+      "twoFactorEnabled": false,
+      "twoFactorSecret": null,
+      "twoFactorPendingSecret": null
     },
     {
       "id": "adm_bootstrap_1771264476069",
@@ -854,7 +1630,10 @@
         "security"
       ],
       "createdAt": "2026-02-16T17:54:36.158Z",
-      "lastAccessAt": "2026-02-21T14:58:36.177Z"
+      "lastAccessAt": "2026-03-07T14:29:42.956Z",
+      "twoFactorEnabled": false,
+      "twoFactorSecret": null,
+      "twoFactorPendingSecret": "32GEE3OKDRYJIJCMIYSVD3QBX5KWD7Z2"
     }
   ],
   "adminRoles": [
@@ -1217,6 +1996,11 @@
       "whatsappEvolution": {
         "connected": false,
         "webhookUrl": "https://api.pedezap.ai/v1/webhooks/whatsapp-evolution"
+      },
+      "twilio": {
+        "connected": true,
+        "whatsappFrom": "whatsapp:+14155238886",
+        "statusCallbackUrl": ""
       }
     },
     "securityPolicies": {
