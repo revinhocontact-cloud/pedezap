@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { renderNotificationTemplate } from '@/lib/message-templates';
 import {
@@ -66,8 +66,25 @@ import {
   YAxis
 } from 'recharts';
 import { BrandLogo } from '@/components/brand-logo';
+import { buildSystemBackupSummary, type SystemBackupPayload, type SystemBackupSummary } from '@/lib/system-backup';
 
 type AdminSession = { email: string; name: string; role?: string; permissions?: string[] };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function resolveBackupPreview(payload: unknown): { generatedAt: string | null; summary: SystemBackupSummary } | null {
+  if (!isRecord(payload)) return null;
+  const container = isRecord(payload.backup) ? payload.backup : payload;
+  const storeCandidate = isRecord(container.store) ? container.store : container;
+  if (!isRecord(storeCandidate) || !Array.isArray(storeCandidate.restaurants)) return null;
+  return {
+    generatedAt: typeof container.generatedAt === 'string' ? container.generatedAt : null,
+    summary: buildSystemBackupSummary(storeCandidate)
+  };
+}
+
 type PageId =
   | 'dashboard'
   | 'restaurants'
@@ -519,6 +536,8 @@ export default function AdminPage() {
     password: ''
   });
   const [showRoleModal, setShowRoleModal] = useState(false);
+  const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
+  const [roleBusyId, setRoleBusyId] = useState<string | null>(null);
   const [roleForm, setRoleForm] = useState({
     name: '',
     permissions: [] as string[]
@@ -566,7 +585,14 @@ export default function AdminPage() {
     admin: false,
     system: false
   });
-  const [settingsTab, setSettingsTab] = useState<'general' | 'branding' | 'notifications' | 'integrations' | 'twilio' | 'security'>('general');
+  const [settingsTab, setSettingsTab] = useState<'general' | 'branding' | 'notifications' | 'integrations' | 'twilio' | 'security' | 'backup'>('general');
+  const backupImportPayloadRef = useRef<SystemBackupPayload | Record<string, unknown> | null>(null);
+  const backupFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [backupBusyAction, setBackupBusyAction] = useState<null | 'export' | 'import'>(null);
+  const [backupFileName, setBackupFileName] = useState('');
+  const [backupPreview, setBackupPreview] = useState<{ generatedAt: string | null; summary: SystemBackupSummary } | null>(null);
+  const [backupError, setBackupError] = useState<string | null>(null);
+  const [backupMessage, setBackupMessage] = useState<string | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLogRow[]>([]);
   const [auditActions, setAuditActions] = useState<string[]>([]);
   const [auditTargetTypes, setAuditTargetTypes] = useState<string[]>([]);
@@ -1034,26 +1060,64 @@ export default function AdminPage() {
     }));
   };
 
-  const handleCreateRole = async () => {
+  const resetRoleForm = () => {
+    setShowRoleModal(false);
+    setEditingRoleId(null);
+    setRoleForm({ name: '', permissions: [] });
+  };
+
+  const handleEditRole = (role: TeamRole) => {
+    setEditingRoleId(role.id);
+    setRoleForm({
+      name: role.name,
+      permissions: role.permissions ?? []
+    });
+    setShowRoleModal(true);
+  };
+
+  const handleSaveRole = async () => {
     if (!roleForm.name || roleForm.permissions.length === 0) {
       alert('Defina o nome e pelo menos uma permissao.');
       return;
     }
-    const response = await fetch('/api/admin/roles', {
-      method: 'POST',
+    const response = await fetch(`/api/admin/roles${editingRoleId ? `/${editingRoleId}` : ''}`, {
+      method: editingRoleId ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name: roleForm.name,
+        name: roleForm.name.trim(),
         permissions: roleForm.permissions
       })
     });
     if (!response.ok) {
       const errorPayload = await response.json().catch(() => null);
-      alert(errorPayload?.message ?? 'Nao foi possivel criar o cargo.');
+      alert(errorPayload?.message ?? 'Nao foi possivel salvar o cargo.');
       return;
     }
-    setShowRoleModal(false);
-    setRoleForm({ name: '', permissions: [] });
+    resetRoleForm();
+    await loadTeamRoles();
+    await loadTeamUsers();
+  };
+
+  const handleDeleteRole = async (role: TeamRole) => {
+    const linkedUsers = teamUsers.filter((user) => user.role === role.name).length;
+    const confirmMessage =
+      linkedUsers > 0
+        ? `O cargo "${role.name}" possui ${linkedUsers} usuario(s) vinculado(s) e nao pode ser excluido agora.`
+        : `Deseja excluir o cargo "${role.name}"?`;
+    if (linkedUsers > 0) {
+      alert(confirmMessage);
+      return;
+    }
+    if (!confirm(confirmMessage)) return;
+
+    setRoleBusyId(role.id);
+    const response = await fetch(`/api/admin/roles/${role.id}`, { method: 'DELETE' });
+    setRoleBusyId(null);
+    if (!response.ok) {
+      const errorPayload = await response.json().catch(() => null);
+      alert(errorPayload?.message ?? 'Nao foi possivel excluir o cargo.');
+      return;
+    }
     await loadTeamRoles();
   };
 
@@ -1204,6 +1268,94 @@ export default function AdminPage() {
       alert('Nao foi possivel salvar as configuracoes.');
       return;
     }
+  }
+
+  async function exportSystemBackup() {
+    setBackupBusyAction('export');
+    setBackupError(null);
+    setBackupMessage(null);
+    const response = await fetch('/api/admin/backup');
+    const rawText = await response.text();
+    setBackupBusyAction(null);
+    if (!response.ok) {
+      try {
+        const payload = JSON.parse(rawText) as { message?: string };
+        setBackupError(payload.message ?? 'Nao foi possivel exportar o backup.');
+      } catch {
+        setBackupError('Nao foi possivel exportar o backup.');
+      }
+      return;
+    }
+
+    const parsed = JSON.parse(rawText) as SystemBackupPayload;
+    const preview = resolveBackupPreview(parsed);
+    const fileName = `pedezap-backup-${(preview?.generatedAt ?? new Date().toISOString()).slice(0, 19).replace(/[:T]/g, '-')}.json`;
+    const blob = new Blob([rawText], { type: 'application/json;charset=utf-8' });
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(downloadUrl);
+
+    setBackupPreview(preview);
+    setBackupFileName(fileName);
+    setBackupMessage('Backup completo exportado com sucesso.');
+  }
+
+  async function handleBackupFileSelected(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setBackupError(null);
+    setBackupMessage(null);
+    setBackupFileName(file.name);
+
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as SystemBackupPayload | Record<string, unknown>;
+      const preview = resolveBackupPreview(parsed);
+      if (!preview) {
+        throw new Error('Arquivo de backup invalido.');
+      }
+      backupImportPayloadRef.current = parsed;
+      setBackupPreview(preview);
+      setBackupMessage('Arquivo carregado. Revise o resumo e confirme a importacao.');
+    } catch (error) {
+      backupImportPayloadRef.current = null;
+      setBackupPreview(null);
+      setBackupError(error instanceof Error ? error.message : 'Nao foi possivel ler o arquivo de backup.');
+    }
+  }
+
+  async function importSystemBackup() {
+    if (!backupImportPayloadRef.current) {
+      setBackupError('Selecione um arquivo de backup antes de importar.');
+      return;
+    }
+    const confirmed = confirm(
+      'Importar o backup vai substituir o estado atual do sistema inteiro. Deseja continuar?'
+    );
+    if (!confirmed) return;
+
+    setBackupBusyAction('import');
+    setBackupError(null);
+    setBackupMessage(null);
+    const response = await fetch('/api/admin/backup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ backup: backupImportPayloadRef.current })
+    });
+    const payload = await response.json().catch(() => null);
+    setBackupBusyAction(null);
+    if (!response.ok || !payload?.success) {
+      setBackupError(payload?.message ?? 'Nao foi possivel importar o backup.');
+      return;
+    }
+
+    alert('Backup importado com sucesso. A pagina sera recarregada para aplicar os dados restaurados.');
+    window.location.reload();
   }
 
   async function runTwilioAutomation(mode: 'due' | 'overdue' | 'all') {
@@ -2234,6 +2386,13 @@ export default function AdminPage() {
       user.role.toLowerCase().includes(q)
     );
   });
+  const teamRoleCards = teamRoles.map((role) => {
+    const linkedUsers = teamUsers.filter((user) => user.role === role.name).length;
+    return {
+      ...role,
+      linkedUsers
+    };
+  });
 
   const supportStatusStyles: Record<SupportTicket['status'], string> = {
     Aberto: 'bg-red-50 text-red-600 border-red-200',
@@ -3088,6 +3247,7 @@ export default function AdminPage() {
                   <button
                     onClick={() => {
                       setShowRoleModal(true);
+                      setEditingRoleId(null);
                       setRoleForm({ name: '', permissions: [] });
                     }}
                     className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
@@ -3128,13 +3288,61 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <div className="px-4 pb-4 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                  <span className="font-medium text-slate-600">Cargos:</span>
-                  {teamRoles.map((role) => (
-                    <span key={role.id} className="px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50">
-                      {role.name}
-                    </span>
-                  ))}
+                <div className="px-4 pb-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <span className="text-xs font-medium text-slate-600">Cargos cadastrados</span>
+                    <span className="text-xs text-slate-400">{teamRoleCards.length} perfil(is)</span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                    {teamRoleCards.map((role) => (
+                      <div key={role.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-semibold text-slate-900">{role.name}</p>
+                              <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200">
+                                {role.linkedUsers} usuario(s)
+                              </span>
+                            </div>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {role.permissions.length} permissao(oes) liberadas
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleEditRole(role)}
+                              className="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
+                              title="Editar cargo"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteRole(role)}
+                              disabled={roleBusyId === role.id}
+                              className="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 transition hover:border-red-200 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                              title={role.linkedUsers > 0 ? 'Cargo em uso nao pode ser excluido' : 'Excluir cargo'}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {role.permissions.map((permissionId) => {
+                            const permissionLabel =
+                              allPermissions.find((permission) => permission.id === permissionId)?.label ?? permissionId;
+                            return (
+                              <span
+                                key={`${role.id}_${permissionId}`}
+                                className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600"
+                              >
+                                {permissionLabel}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -4022,13 +4230,24 @@ export default function AdminPage() {
                   <h1 className="text-2xl font-bold text-slate-900">Configuracoes Globais</h1>
                   <p className="text-sm text-slate-500">Ajustes gerais do painel e comunicacoes da plataforma.</p>
                 </div>
-                <button
-                  onClick={saveAdminSettings}
-                  className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
-                >
-                  <Download size={16} />
-                  {settingsSaving ? 'Salvando...' : 'Salvar Alteracoes'}
-                </button>
+                {settingsTab !== 'backup' ? (
+                  <button
+                    onClick={saveAdminSettings}
+                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
+                  >
+                    <Download size={16} />
+                    {settingsSaving ? 'Salvando...' : 'Salvar Alteracoes'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={exportSystemBackup}
+                    disabled={backupBusyAction !== null}
+                    className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Download size={16} />
+                    {backupBusyAction === 'export' ? 'Exportando...' : 'Exportar Backup'}
+                  </button>
+                )}
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
@@ -4039,7 +4258,8 @@ export default function AdminPage() {
                       { id: 'notifications', label: 'Notificacoes', icon: Bell },
                       { id: 'integrations', label: 'Integracoes', icon: Activity },
                       { id: 'twilio', label: 'Twilio', icon: MessageCircle },
-                      { id: 'security', label: 'Seguranca', icon: ShieldAlert }
+                      { id: 'security', label: 'Seguranca', icon: ShieldAlert },
+                      { id: 'backup', label: 'Backup', icon: Download }
                     ].map((tab) => {
                     const Icon = tab.icon;
                     const isActive = settingsTab === tab.id;
@@ -4772,6 +4992,170 @@ export default function AdminPage() {
                               )}
                             </div>
                           </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {settingsTab === 'backup' && (
+                    <div className="space-y-6">
+                      <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-sky-50 via-white to-slate-50 p-6">
+                        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="space-y-2">
+                            <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-sky-700 shadow-sm ring-1 ring-sky-100">
+                              <Download size={14} />
+                              Continuidade operacional
+                            </div>
+                            <div>
+                              <h2 className="text-xl font-bold text-slate-900">Backup completo do sistema</h2>
+                              <p className="text-sm text-slate-500">
+                                Exporte e restaure todo o estado do PedeZap, incluindo painel admin, painel master, cardapios, pedidos, clientes, planos e configuracoes globais.
+                              </p>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                            {[
+                              { label: 'Lojas', value: backupPreview?.summary.restaurants ?? restaurants.length },
+                              { label: 'Pedidos', value: backupPreview?.summary.orders ?? stats?.totalOrders ?? 0 },
+                              { label: 'Clientes', value: backupPreview?.summary.customers ?? 0 },
+                              { label: 'Admins', value: backupPreview?.summary.adminUsers ?? 0 }
+                            ].map((item) => (
+                              <div key={item.label} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">{item.label}</p>
+                                <p className="mt-1 text-lg font-bold text-slate-900">{item.value}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <h3 className="text-base font-semibold text-slate-900">Exportar backup agora</h3>
+                              <p className="text-sm text-slate-500">Gera um arquivo JSON com o estado completo atual do sistema.</p>
+                            </div>
+                            <div className="h-11 w-11 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center">
+                              <Download size={18} />
+                            </div>
+                          </div>
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                            <p className="text-sm text-slate-700">
+                              O backup inclui dados do admin, lojas, acessos master, categorias, produtos, banners, pedidos, clientes, financeiro e configuracoes.
+                            </p>
+                            <button
+                              onClick={exportSystemBackup}
+                              disabled={backupBusyAction !== null}
+                              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              <Download size={16} />
+                              {backupBusyAction === 'export' ? 'Exportando backup...' : 'Baixar backup completo'}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <h3 className="text-base font-semibold text-slate-900">Importar backup</h3>
+                              <p className="text-sm text-slate-500">Restaure os dados usando um arquivo de backup exportado pelo sistema.</p>
+                            </div>
+                            <div className="h-11 w-11 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                              <Upload size={18} />
+                            </div>
+                          </div>
+                          <input
+                            ref={backupFileInputRef}
+                            type="file"
+                            accept="application/json"
+                            className="hidden"
+                            onChange={handleBackupFileSelected}
+                          />
+                          <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center">
+                            <p className="text-sm font-medium text-slate-700">Selecione um arquivo `.json` de backup</p>
+                            <p className="mt-1 text-xs text-slate-500">Recomendado usar apenas backups exportados por esta plataforma.</p>
+                            <button
+                              onClick={() => backupFileInputRef.current?.click()}
+                              className="mt-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                            >
+                              <Upload size={16} />
+                              Escolher arquivo
+                            </button>
+                            {backupFileName ? <p className="mt-3 text-xs text-slate-500">Arquivo selecionado: {backupFileName}</p> : null}
+                          </div>
+                          <button
+                            onClick={importSystemBackup}
+                            disabled={backupBusyAction !== null || !backupImportPayloadRef.current}
+                            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <RefreshCcw size={16} />
+                            {backupBusyAction === 'import' ? 'Importando backup...' : 'Importar e restaurar sistema'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {backupError ? (
+                        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                          {backupError}
+                        </div>
+                      ) : null}
+                      {backupMessage ? (
+                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                          {backupMessage}
+                        </div>
+                      ) : null}
+
+                      {backupPreview ? (
+                        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <h3 className="text-base font-semibold text-slate-900">Resumo do backup</h3>
+                              <p className="text-sm text-slate-500">
+                                {backupPreview.generatedAt
+                                  ? `Gerado em ${new Date(backupPreview.generatedAt).toLocaleString('pt-BR')}`
+                                  : 'Arquivo carregado pronto para restauracao'}
+                              </p>
+                            </div>
+                            <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                              Restauracao total
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
+                            {[
+                              ['Lojas', backupPreview.summary.restaurants],
+                              ['Categorias', backupPreview.summary.categories],
+                              ['Produtos', backupPreview.summary.products],
+                              ['Usuarios master', backupPreview.summary.masterUsers],
+                              ['Pedidos', backupPreview.summary.orders],
+                              ['Clientes', backupPreview.summary.customers],
+                              ['Leads', backupPreview.summary.leads],
+                              ['Admins', backupPreview.summary.adminUsers],
+                              ['Perfis', backupPreview.summary.adminRoles],
+                              ['Chamados', backupPreview.summary.supportTickets],
+                              ['Mensagens', backupPreview.summary.supportMessages],
+                              ['Auditoria', backupPreview.summary.auditLogs]
+                            ].map(([label, value]) => (
+                              <div key={String(label)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</p>
+                                <p className="mt-1 text-lg font-bold text-slate-900">{value}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div className="space-y-2">
+                            <h3 className="text-base font-semibold text-slate-900">Proxima etapa: backup automatico em nuvem</h3>
+                            <p className="text-sm text-slate-500">
+                              Podemos conectar esta rotina a Google Drive, Dropbox, S3 ou outro servidor para criar backups automaticos diarios e manter historico de versoes.
+                            </p>
+                          </div>
+                          <span className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold text-sky-700 ring-1 ring-sky-100">
+                            Planejado
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -5630,10 +6014,12 @@ export default function AdminPage() {
           <div className="bg-white w-full max-w-lg rounded-2xl border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <div>
-                <h2 className="text-xl font-bold text-slate-900">Novo Cargo</h2>
-                <p className="text-sm text-slate-500 mt-1">Defina as permissoes de acesso.</p>
+                <h2 className="text-xl font-bold text-slate-900">{editingRoleId ? 'Editar Cargo' : 'Novo Cargo'}</h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  {editingRoleId ? 'Atualize o nome e as permissoes deste cargo.' : 'Defina as permissoes de acesso.'}
+                </p>
               </div>
-              <button onClick={() => setShowRoleModal(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+              <button onClick={resetRoleForm} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
                 <X size={20} />
               </button>
             </div>
@@ -5667,11 +6053,11 @@ export default function AdminPage() {
                 </div>
               </div>
               <div className="flex items-center justify-end gap-2 pt-2">
-                <button onClick={() => setShowRoleModal(false)} className="px-4 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-100">
+                <button onClick={resetRoleForm} className="px-4 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-100">
                   Cancelar
                 </button>
-                <button onClick={handleCreateRole} className="px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700">
-                  Criar Cargo
+                <button onClick={handleSaveRole} className="px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700">
+                  {editingRoleId ? 'Salvar Alteracoes' : 'Criar Cargo'}
                 </button>
               </div>
             </div>

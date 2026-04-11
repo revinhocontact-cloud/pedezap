@@ -133,7 +133,7 @@ async function ensureDbSchemaReady(): Promise<boolean> {
   return dbSchemaReady;
 }
 
-function normalizeStore(parsed: Partial<AppStore>): AppStore {
+export function normalizeStore(parsed: Partial<AppStore>): AppStore {
   const now = new Date().toISOString();
   const restaurants = (parsed.restaurants ?? defaultStore.restaurants).map((item) => ({
     ...item,
