@@ -802,6 +802,11 @@ export default function MasterPage() {
   const ordersHydratedRef = useRef(false);
 
   const [newCategory, setNewCategory] = useState('');
+  const [categorySearch, setCategorySearch] = useState('');
+  const [categoryFormActive, setCategoryFormActive] = useState(true);
+  const [categoryFormError, setCategoryFormError] = useState<string | null>(null);
+  const [categorySaving, setCategorySaving] = useState(false);
+  const [categoryDeletingId, setCategoryDeletingId] = useState<string | null>(null);
   const [productForm, setProductForm] = useState<MenuProductForm>(createDefaultProductForm());
   const [productAiLoadingMode, setProductAiLoadingMode] = useState<null | 'generate' | 'improve'>(null);
   const [acaiDraftItemByGroup, setAcaiDraftItemByGroup] = useState<
@@ -1305,41 +1310,136 @@ export default function MasterPage() {
 
   async function saveCategory(category: Partial<RestaurantCategory>) {
     if (!session) return;
+    const trimmedName = (category.name ?? '').trim();
+    if (trimmedName.length < 2) {
+      setCategoryFormError('Digite pelo menos 2 caracteres para o nome da categoria.');
+      return;
+    }
+    const normalizedName = trimmedName.toLowerCase();
+    const duplicateCategory = restaurant?.categories.find(
+      (item) => item.id !== category.id && item.name.trim().toLowerCase() === normalizedName
+    );
+    if (duplicateCategory) {
+      setCategoryFormError('Ja existe uma categoria com esse nome.');
+      return;
+    }
+
+    setCategorySaving(true);
+    setCategoryFormError(null);
+    const previousCategoryIds = new Set(restaurant?.categories.map((item) => item.id) ?? []);
     const response = await fetch(`/api/master/restaurant/${session.restaurantSlug}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'saveCategory', data: category })
+      body: JSON.stringify({
+        action: 'saveCategory',
+        data: {
+          id: category.id,
+          name: trimmedName,
+          active: category.active ?? true
+        }
+      })
     });
-    const payload = await response.json();
+    const payload = await response.json().catch(() => null);
+    setCategorySaving(false);
+    if (!response.ok || !payload?.categories) {
+      setCategoryFormError(payload?.message ?? 'Nao foi possivel salvar a categoria.');
+      return;
+    }
     if (payload?.categories && restaurant) {
+      const savedCategory =
+        payload.categories.find((item: RestaurantCategory) => item.id === category.id) ??
+        payload.categories.find(
+          (item: RestaurantCategory) => !previousCategoryIds.has(item.id) && item.name.trim().toLowerCase() === normalizedName
+        ) ??
+        payload.categories.find((item: RestaurantCategory) => item.name.trim().toLowerCase() === normalizedName) ??
+        null;
       setRestaurant({ ...restaurant, categories: payload.categories });
+      if (savedCategory?.id) {
+        setSelectedCategoryId(savedCategory.id);
+        setProductForm((prev) =>
+          prev.categoryId
+            ? prev
+            : {
+                ...prev,
+                categoryId: savedCategory.id
+              }
+        );
+      }
       setNewCategory('');
+      setCategoryFormActive(true);
       setEditingCategoryId(null);
       setShowCategoryForm(false);
+      setCategoryFormError(null);
     }
   }
 
   async function deleteCategory(categoryId: string) {
     if (!session) return;
+    if (!restaurant) return;
+    if (restaurant.categories.length <= 1) {
+      alert('Voce precisa manter pelo menos uma categoria cadastrada.');
+      return;
+    }
+    const category = restaurant.categories.find((item) => item.id === categoryId);
+    const relatedProductsCount = restaurant.products.filter((item) => item.categoryId === categoryId).length;
+    const confirmMessage =
+      relatedProductsCount > 0
+        ? `Excluir a categoria "${category?.name ?? 'selecionada'}" tambem vai remover ${relatedProductsCount} produto(s). Deseja continuar?`
+        : `Deseja excluir a categoria "${category?.name ?? 'selecionada'}"?`;
+    if (!confirm(confirmMessage)) return;
+
+    setCategoryDeletingId(categoryId);
     const response = await fetch(`/api/master/restaurant/${session.restaurantSlug}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'deleteCategory', categoryId })
     });
-    const payload = await response.json();
+    const payload = await response.json().catch(() => null);
+    setCategoryDeletingId(null);
+    if (!response.ok || !payload?.categories || !payload?.products) {
+      alert(payload?.message ?? 'Nao foi possivel excluir a categoria.');
+      return;
+    }
     if (payload?.categories && payload?.products && restaurant) {
+      const fallbackCategoryId =
+        payload.categories.find((item: RestaurantCategory) => item.id === selectedCategoryId)?.id ??
+        payload.categories[0]?.id ??
+        null;
       setRestaurant({
         ...restaurant,
         categories: payload.categories,
         products: payload.products
       });
+      setSelectedCategoryId(fallbackCategoryId);
+      setProductForm((prev) => ({
+        ...prev,
+        categoryId: prev.categoryId === categoryId ? fallbackCategoryId ?? '' : prev.categoryId
+      }));
     }
   }
 
   const editCategory = (category: RestaurantCategory) => {
     setEditingCategoryId(category.id);
     setNewCategory(category.name);
+    setCategoryFormActive(category.active);
+    setCategoryFormError(null);
     setShowCategoryForm(true);
+  };
+
+  const resetCategoryForm = () => {
+    setShowCategoryForm(false);
+    setEditingCategoryId(null);
+    setNewCategory('');
+    setCategoryFormActive(true);
+    setCategoryFormError(null);
+  };
+
+  const openCreateCategoryForm = () => {
+    setShowCategoryForm(true);
+    setEditingCategoryId(null);
+    setNewCategory('');
+    setCategoryFormActive(true);
+    setCategoryFormError(null);
   };
 
   async function saveProduct() {
@@ -1621,6 +1721,19 @@ export default function MasterPage() {
   };
 
   const selectedCategory = restaurant?.categories.find((cat) => cat.id === selectedCategoryId) ?? null;
+  const categorySummaries = useMemo(() => {
+    if (!restaurant) return [] as Array<RestaurantCategory & { productCount: number }>;
+    return restaurant.categories.map((category) => ({
+      ...category,
+      productCount: restaurant.products.filter((product) => product.categoryId === category.id).length
+    }));
+  }, [restaurant]);
+  const filteredCategorySummaries = useMemo(() => {
+    const query = categorySearch.trim().toLowerCase();
+    if (!query) return categorySummaries;
+    return categorySummaries.filter((category) => category.name.toLowerCase().includes(query));
+  }, [categorySearch, categorySummaries]);
+  const activeCategoryCount = categorySummaries.filter((category) => category.active).length;
   const availableProductCategories = useMemo(() => {
     if (!restaurant) return [] as RestaurantCategory[];
     const activeCategories = restaurant.categories.filter((category) => category.active);
@@ -6122,11 +6235,7 @@ export default function MasterPage() {
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-base font-semibold text-gray-900">Categorias</h2>
                     <button
-                      onClick={() => {
-                        setShowCategoryForm(true);
-                        setEditingCategoryId(null);
-                        setNewCategory('');
-                      }}
+                      onClick={openCreateCategoryForm}
                       className="inline-flex items-center gap-1 rounded-lg bg-black text-white px-3 py-1.5 text-xs font-medium hover:bg-slate-900"
                     >
                       <Plus size={14} />
@@ -6134,88 +6243,193 @@ export default function MasterPage() {
                     </button>
                   </div>
 
+                  <div className="mb-4 grid grid-cols-2 gap-2">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Total</p>
+                      <p className="mt-1 text-lg font-bold text-slate-900">{categorySummaries.length}</p>
+                    </div>
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Ativas</p>
+                      <p className="mt-1 text-lg font-bold text-emerald-900">{activeCategoryCount}</p>
+                    </div>
+                  </div>
+
+                  <div className="relative mb-4">
+                    <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      value={categorySearch}
+                      onChange={(event) => setCategorySearch(event.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
+                      placeholder="Buscar categoria"
+                    />
+                  </div>
+
                   {showCategoryForm && (
-                    <div className="mb-4 space-y-2">
-                      <input
-                        value={newCategory}
-                        onChange={(event) => setNewCategory(event.target.value)}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                        placeholder="Nome da categoria"
-                      />
-                      <div className="flex items-center gap-2">
+                    <div className="mb-4 rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-slate-100 p-4 shadow-sm">
+                      <div className="mb-3 flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            {editingCategoryId ? 'Editando categoria' : 'Nova categoria'}
+                          </p>
+                          <h3 className="mt-1 text-sm font-semibold text-slate-900">
+                            {editingCategoryId ? 'Ajuste nome e status' : 'Crie uma categoria para organizar o cardapio'}
+                          </h3>
+                        </div>
                         <button
-                          onClick={() => {
-                            const currentActive =
-                              editingCategoryId
-                                ? restaurant.categories.find((item) => item.id === editingCategoryId)?.active ?? true
-                                : true;
-                            saveCategory({ id: editingCategoryId ?? undefined, name: newCategory, active: currentActive });
-                          }}
-                          className="inline-flex items-center justify-center rounded-lg font-medium transition-colors bg-black text-white hover:bg-slate-900 px-3 py-2 text-xs"
+                          onClick={resetCategoryForm}
+                          className="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 transition hover:text-slate-900"
+                          aria-label="Fechar formulario de categoria"
                         >
-                          Salvar
+                          <X size={14} />
                         </button>
-                        <button
-                          onClick={() => {
-                            setShowCategoryForm(false);
-                            setNewCategory('');
-                            setEditingCategoryId(null);
-                          }}
-                          className="inline-flex items-center justify-center rounded-lg font-medium transition-colors border border-gray-200 px-3 py-2 text-xs text-gray-600 hover:bg-gray-50"
-                        >
-                          Cancelar
-                        </button>
+                      </div>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-slate-500">Nome da categoria</label>
+                          <input
+                            value={newCategory}
+                            onChange={(event) => {
+                              setNewCategory(event.target.value);
+                              if (categoryFormError) setCategoryFormError(null);
+                            }}
+                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-500"
+                            placeholder="Ex: Pizzas tradicionais"
+                          />
+                        </div>
+                        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+                          <div>
+                            <p className="text-sm font-medium text-slate-900">Categoria ativa</p>
+                            <p className="text-xs text-slate-500">Categorias inativas continuam visiveis para edicao.</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setCategoryFormActive((prev) => !prev)}
+                            className={`h-6 w-11 rounded-full p-0.5 transition-colors ${
+                              categoryFormActive ? 'bg-emerald-500' : 'bg-slate-300'
+                            }`}
+                            aria-label={categoryFormActive ? 'Desativar categoria' : 'Ativar categoria'}
+                          >
+                            <span
+                              className={`block h-5 w-5 rounded-full bg-white transition-transform ${
+                                categoryFormActive ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                        {categoryFormError ? (
+                          <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                            {categoryFormError}
+                          </div>
+                        ) : null}
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() =>
+                              saveCategory({
+                                id: editingCategoryId ?? undefined,
+                                name: newCategory,
+                                active: categoryFormActive
+                              })
+                            }
+                            disabled={categorySaving}
+                            className="inline-flex items-center justify-center rounded-xl bg-black px-3 py-2 text-xs font-medium text-white transition hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {categorySaving ? 'Salvando...' : editingCategoryId ? 'Salvar alteracoes' : 'Criar categoria'}
+                          </button>
+                          <button
+                            onClick={resetCategoryForm}
+                            className="inline-flex items-center justify-center rounded-xl border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 transition hover:bg-gray-50"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
 
                   <div className="space-y-2">
-                    {restaurant.categories.map((category) => (
+                    {filteredCategorySummaries.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center">
+                        <p className="text-sm font-medium text-slate-700">Nenhuma categoria encontrada</p>
+                        <p className="mt-1 text-xs text-slate-500">Tente outro nome na busca ou crie uma nova categoria.</p>
+                      </div>
+                    ) : (
+                      filteredCategorySummaries.map((category) => (
                       <div
                         key={category.id}
-                        className={`flex items-center justify-between rounded-lg border px-3 py-2 ${
+                        className={`rounded-2xl border px-3 py-3 transition ${
                           selectedCategoryId === category.id
                             ? category.active
-                              ? 'border-emerald-300 bg-emerald-50'
-                              : 'border-red-300 bg-red-50'
+                              ? 'border-emerald-300 bg-emerald-50 shadow-sm'
+                              : 'border-red-300 bg-red-50 shadow-sm'
                             : category.active
-                            ? 'border-emerald-200 bg-emerald-50/40'
-                            : 'border-red-200 bg-red-50/40'
+                            ? 'border-slate-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/40'
+                            : 'border-slate-200 bg-white hover:border-red-200 hover:bg-red-50/40'
                         }`}
                       >
-                        <button
-                          onClick={() => setSelectedCategoryId(category.id)}
-                          className="flex items-center gap-2 text-left flex-1"
-                        >
-                          <span className={`h-2 w-2 rounded-full ${category.active ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
-                          <span className={`text-sm font-medium ${category.active ? 'text-emerald-800' : 'text-red-700'}`}>
-                            {category.name} {!category.active ? '(Inativa)' : ''}
-                          </span>
-                        </button>
-                        <div className="flex items-center gap-2 text-gray-400">
+                        <div className="flex items-start justify-between gap-3">
                           <button
-                            onClick={() => saveCategory({ id: category.id, name: category.name, active: !category.active })}
-                            className={`h-5 w-10 rounded-full p-0.5 transition-colors ${
-                              category.active ? 'bg-emerald-500' : 'bg-red-400'
-                            }`}
-                            title={category.active ? 'Desativar categoria' : 'Ativar categoria'}
-                            aria-label={category.active ? 'Desativar categoria' : 'Ativar categoria'}
+                            onClick={() => setSelectedCategoryId(category.id)}
+                            className="flex flex-1 items-start gap-3 text-left"
                           >
                             <span
-                              className={`block h-4 w-4 rounded-full bg-white transition-transform ${
-                                category.active ? 'translate-x-5' : 'translate-x-0'
+                              className={`mt-1 h-2.5 w-2.5 rounded-full ${
+                                category.active ? 'bg-emerald-500' : 'bg-red-500'
                               }`}
                             />
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="truncate text-sm font-semibold text-slate-900">{category.name}</span>
+                                <span
+                                  className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                    category.active ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-700'
+                                  }`}
+                                >
+                                  {category.active ? 'Ativa' : 'Inativa'}
+                                </span>
+                              </div>
+                              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                                <span>{category.productCount} produto(s)</span>
+                                {selectedCategoryId === category.id ? (
+                                  <span className="rounded-full bg-slate-900 px-2 py-0.5 font-medium text-white">Selecionada</span>
+                                ) : null}
+                              </div>
+                            </div>
                           </button>
-                          <button onClick={() => editCategory(category)} className="hover:text-slate-900">
-                            <Pencil size={14} />
-                          </button>
-                          <button onClick={() => deleteCategory(category.id)} className="hover:text-red-600">
-                            <Trash2 size={14} />
-                          </button>
+                          <div className="flex items-center gap-1.5 text-gray-400">
+                            <button
+                              onClick={() => saveCategory({ id: category.id, name: category.name, active: !category.active })}
+                              className={`h-6 w-11 rounded-full p-0.5 transition-colors ${
+                                category.active ? 'bg-emerald-500' : 'bg-slate-300'
+                              }`}
+                              title={category.active ? 'Desativar categoria' : 'Ativar categoria'}
+                              aria-label={category.active ? 'Desativar categoria' : 'Ativar categoria'}
+                            >
+                              <span
+                                className={`block h-5 w-5 rounded-full bg-white transition-transform ${
+                                  category.active ? 'translate-x-5' : 'translate-x-0'
+                                }`}
+                              />
+                            </button>
+                            <button
+                              onClick={() => editCategory(category)}
+                              className="rounded-lg border border-slate-200 bg-white p-2 transition hover:border-slate-300 hover:text-slate-900"
+                              title="Editar categoria"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              onClick={() => deleteCategory(category.id)}
+                              disabled={categoryDeletingId === category.id}
+                              className="rounded-lg border border-slate-200 bg-white p-2 transition hover:border-red-200 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                              title="Excluir categoria"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    ))}
+                    ))
+                    )}
                   </div>
                 </section>
 
@@ -9636,7 +9850,17 @@ export default function MasterPage() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs text-gray-500">Categoria</label>
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <label className="text-xs text-gray-500">Categoria</label>
+                          <button
+                            type="button"
+                            onClick={openCreateCategoryForm}
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50"
+                          >
+                            <Plus size={12} />
+                            Nova categoria
+                          </button>
+                        </div>
                         <select
                           value={productForm.categoryId ?? ''}
                           onChange={(event) => setProductForm((prev) => ({ ...prev, categoryId: event.target.value }))}
@@ -9649,6 +9873,9 @@ export default function MasterPage() {
                             </option>
                           ))}
                         </select>
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          Crie e gerencie categorias na lateral sem perder o que voce ja preencheu no produto.
+                        </p>
                       </div>
                       <div>
                         <label className="text-xs text-gray-500">Imagem do Produto</label>
