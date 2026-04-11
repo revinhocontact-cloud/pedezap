@@ -2393,6 +2393,10 @@ export default function AdminPage() {
       linkedUsers
     };
   });
+  const editingRoleDetails = editingRoleId ? teamRoleCards.find((role) => role.id === editingRoleId) ?? null : null;
+  const selectedRolePermissionLabels = roleForm.permissions.map(
+    (permissionId) => allPermissions.find((permission) => permission.id === permissionId)?.label ?? permissionId
+  );
 
   const supportStatusStyles: Record<SupportTicket['status'], string> = {
     Aberto: 'bg-red-50 text-red-600 border-red-200',
@@ -6011,54 +6015,146 @@ export default function AdminPage() {
 
       {showRoleModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/45 flex items-center justify-center p-6">
-          <div className="bg-white w-full max-w-lg rounded-2xl border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">{editingRoleId ? 'Editar Cargo' : 'Novo Cargo'}</h2>
-                <p className="text-sm text-slate-500 mt-1">
-                  {editingRoleId ? 'Atualize o nome e as permissoes deste cargo.' : 'Defina as permissoes de acesso.'}
-                </p>
+          <div className="bg-white w-full max-w-3xl rounded-[28px] border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="border-b border-slate-100 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 px-6 py-6 text-white">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-100">
+                    <ShieldAlert size={13} />
+                    {editingRoleId ? 'Edicao de cargo' : 'Novo perfil de acesso'}
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold">{editingRoleId ? 'Editar Cargo' : 'Novo Cargo'}</h2>
+                    <p className="mt-1 text-sm text-slate-300">
+                      {editingRoleId
+                        ? 'Atualize nome, escopo e permissoes com uma visualizacao mais clara do impacto desse perfil.'
+                        : 'Monte um perfil de acesso elegante e reutilizavel para sua equipe administrativa.'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={resetRoleForm}
+                  className="rounded-full border border-white/10 bg-white/5 p-2 text-slate-200 transition hover:bg-white/10 hover:text-white"
+                >
+                  <X size={20} />
+                </button>
               </div>
-              <button onClick={resetRoleForm} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
-                <X size={20} />
-              </button>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-700">Nome do Cargo</label>
-                <input
-                  value={roleForm.name}
-                  onChange={(event) => setRoleForm((prev) => ({ ...prev, name: event.target.value }))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                />
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-slate-700">Permissoes</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {allPermissions.map((permission) => (
-                    <button
-                      key={permission.id}
-                      type="button"
-                      onClick={() => toggleRolePermission(permission.id)}
-                      className={`flex items-center justify-between px-3 py-2 rounded-lg border text-sm transition-colors ${
-                        roleForm.permissions.includes(permission.id)
-                          ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
-                          : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                      }`}
-                    >
-                      <span>{permission.label}</span>
-                      {roleForm.permissions.includes(permission.id) && <Check size={16} />}
-                    </button>
-                  ))}
+            <div className="grid grid-cols-1 gap-0 lg:grid-cols-[1.15fr_0.85fr]">
+              <div className="p-6 space-y-5">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">Nome do Cargo</label>
+                  <input
+                    value={roleForm.name}
+                    onChange={(event) => setRoleForm((prev) => ({ ...prev, name: event.target.value }))}
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                    placeholder="Ex: Financeiro senior"
+                  />
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">Permissoes do cargo</p>
+                      <p className="text-xs text-slate-500">Selecione o que esse perfil pode acessar no painel admin.</p>
+                    </div>
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+                      {roleForm.permissions.length} selecionada(s)
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {allPermissions.map((permission) => {
+                      const selected = roleForm.permissions.includes(permission.id);
+                      return (
+                        <button
+                          key={permission.id}
+                          type="button"
+                          onClick={() => toggleRolePermission(permission.id)}
+                          className={`group rounded-2xl border px-4 py-3 text-left transition-all ${
+                            selected
+                              ? 'border-emerald-300 bg-emerald-50 shadow-sm shadow-emerald-100'
+                              : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className={`text-sm font-semibold ${selected ? 'text-emerald-800' : 'text-slate-800'}`}>
+                                {permission.label}
+                              </p>
+                              <p className={`mt-1 text-xs ${selected ? 'text-emerald-700/80' : 'text-slate-500'}`}>
+                                Libera acesso a esta area do painel.
+                              </p>
+                            </div>
+                            <div
+                              className={`mt-0.5 flex h-6 w-6 items-center justify-center rounded-full border transition ${
+                                selected
+                                  ? 'border-emerald-300 bg-emerald-600 text-white'
+                                  : 'border-slate-200 bg-white text-transparent group-hover:text-slate-300'
+                              }`}
+                            >
+                              <Check size={14} />
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button onClick={resetRoleForm} className="px-4 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-100">
-                  Cancelar
-                </button>
-                <button onClick={handleSaveRole} className="px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700">
-                  {editingRoleId ? 'Salvar Alteracoes' : 'Criar Cargo'}
-                </button>
+
+              <div className="border-t border-slate-100 bg-slate-50/80 p-6 lg:border-l lg:border-t-0">
+                <div className="space-y-5">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Resumo rapido</p>
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Nome</p>
+                        <p className="mt-1 text-sm font-bold text-slate-900">{roleForm.name.trim() || 'Sem nome'}</p>
+                      </div>
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Usuarios</p>
+                        <p className="mt-1 text-sm font-bold text-slate-900">{editingRoleDetails?.linkedUsers ?? 0}</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-3">
+                      <p className="text-xs font-semibold text-indigo-700">Impacto do cargo</p>
+                      <p className="mt-1 text-sm text-indigo-900">
+                        {editingRoleDetails
+                          ? 'Alteracoes nas permissoes afetam os usuarios que ja usam este cargo.'
+                          : 'Depois de criado, este cargo pode ser reutilizado em novos usuarios da equipe.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-slate-900">Acessos selecionados</p>
+                      <span className="text-xs text-slate-400">{selectedRolePermissionLabels.length} item(ns)</span>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {selectedRolePermissionLabels.length > 0 ? (
+                        selectedRolePermissionLabels.map((label) => (
+                          <span
+                            key={label}
+                            className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700"
+                          >
+                            {label}
+                          </span>
+                        ))
+                      ) : (
+                        <p className="text-sm text-slate-500">Selecione pelo menos uma permissao para liberar acesso.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2">
+                    <button onClick={resetRoleForm} className="rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-200/70">
+                      Cancelar
+                    </button>
+                    <button onClick={handleSaveRole} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-700">
+                      {editingRoleId ? 'Salvar Alteracoes' : 'Criar Cargo'}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
