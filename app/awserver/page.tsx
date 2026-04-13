@@ -524,6 +524,7 @@ export default function AdminPage() {
   const [delinquencyInvoices, setDelinquencyInvoices] = useState<FinanceInvoice[]>([]);
   const [teamUsers, setTeamUsers] = useState<TeamUser[]>([]);
   const [teamRoles, setTeamRoles] = useState<TeamRole[]>([]);
+  const [teamView, setTeamView] = useState<'users' | 'roles'>('users');
   const [teamQuery, setTeamQuery] = useState('');
   const [teamLoading, setTeamLoading] = useState(false);
   const [showTeamModal, setShowTeamModal] = useState(false);
@@ -2366,6 +2367,46 @@ export default function AdminPage() {
     Suporte: 'bg-blue-100 text-blue-700 border-blue-200',
     Operacao: 'bg-amber-100 text-amber-700 border-amber-200'
   };
+  const roleCardThemes: Record<
+    string,
+    {
+      iconWrap: string;
+      iconColor: string;
+      badge: string;
+      avatar: string;
+      border: string;
+    }
+  > = {
+    'Admin Master': {
+      iconWrap: 'bg-violet-100',
+      iconColor: 'text-violet-600',
+      badge: 'bg-violet-50 text-violet-700 border-violet-200',
+      avatar: 'bg-violet-600 text-white',
+      border: 'border-violet-200'
+    },
+    Financeiro: {
+      iconWrap: 'bg-emerald-100',
+      iconColor: 'text-emerald-600',
+      badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      avatar: 'bg-emerald-600 text-white',
+      border: 'border-emerald-200'
+    },
+    Suporte: {
+      iconWrap: 'bg-blue-100',
+      iconColor: 'text-blue-600',
+      badge: 'bg-blue-50 text-blue-700 border-blue-200',
+      avatar: 'bg-blue-600 text-white',
+      border: 'border-blue-200'
+    },
+    Operacao: {
+      iconWrap: 'bg-amber-100',
+      iconColor: 'text-amber-600',
+      badge: 'bg-amber-50 text-amber-700 border-amber-200',
+      avatar: 'bg-slate-500 text-white',
+      border: 'border-amber-200'
+    }
+  };
+  const defaultSystemRoles = new Set(['Admin Master', 'Financeiro', 'Suporte', 'Operacao']);
 
   const statusStyles: Record<TeamUser['status'], string> = {
     Ativo: 'bg-emerald-100 text-emerald-700',
@@ -3244,100 +3285,230 @@ export default function AdminPage() {
             <div className="max-w-7xl mx-auto space-y-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h1 className="text-2xl font-bold text-slate-900">Equipe Administrativa</h1>
-                  <p className="text-sm text-slate-500">Gerencie os usuarios que tem acesso ao painel admin.</p>
+                  <h1 className="text-2xl font-bold text-slate-900">Equipe & Acessos</h1>
+                  <p className="text-sm text-slate-500">Gerencie os usuarios e crie cargos personalizados com permissoes especificas.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      setShowRoleModal(true);
-                      setEditingRoleId(null);
-                      setRoleForm({ name: '', permissions: [] });
-                    }}
-                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    <Plus size={16} />
-                    Novo Cargo
-                  </button>
-                  <button
-                    onClick={() => {
-                      setEditingTeamUser(null);
-                      setTeamForm({
-                        name: '',
-                        email: '',
-                        role: teamRoles[0]?.name ?? '',
-                        status: 'Ativo',
-                        password: ''
-                      });
-                      setShowTeamModal(true);
-                    }}
-                    className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-slate-900/20 hover:bg-slate-800"
-                  >
-                    <Plus size={16} />
-                    Novo Funcionario
-                  </button>
+                  {teamView === 'users' ? (
+                    <button
+                      onClick={() => {
+                        setEditingTeamUser(null);
+                        setTeamForm({
+                          name: '',
+                          email: '',
+                          role: teamRoles[0]?.name ?? '',
+                          status: 'Ativo',
+                          password: ''
+                        });
+                        setShowTeamModal(true);
+                      }}
+                      className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 hover:bg-slate-800"
+                    >
+                      <Plus size={16} />
+                      Novo Usuario
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setShowRoleModal(true);
+                        setEditingRoleId(null);
+                        setRoleForm({ name: '', permissions: [] });
+                      }}
+                      className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700"
+                    >
+                      <Plus size={16} />
+                      Novo Cargo
+                    </button>
+                  )}
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-slate-200">
-                  <div className="relative w-full max-w-md">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      value={teamQuery}
-                      onChange={(event) => setTeamQuery(event.target.value)}
-                      className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
-                      placeholder="Buscar por nome ou email..."
-                    />
+              <div className="border-b border-slate-200">
+                <div className="flex items-center gap-3">
+                  {[
+                    { id: 'users' as const, label: 'Usuarios do Sistema' },
+                    { id: 'roles' as const, label: 'Cargos e Permissoes' }
+                  ].map((tab) => {
+                    const active = teamView === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setTeamView(tab.id)}
+                        className={`border-b-2 px-4 py-3 text-sm font-medium transition ${
+                          active
+                            ? 'border-indigo-500 text-indigo-600'
+                            : 'border-transparent text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {teamView === 'users' && (
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  <div className="border-b border-slate-200 px-4 py-4">
+                    <div className="relative w-full max-w-md">
+                      <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        value={teamQuery}
+                        onChange={(event) => setTeamQuery(event.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 py-2.5 text-sm outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-50"
+                        placeholder="Buscar por nome ou email..."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-slate-50/80 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                        <tr>
+                          <th className="px-6 py-4">Usuario</th>
+                          <th className="px-6 py-4">Cargo / Funcao</th>
+                          <th className="px-6 py-4">Status</th>
+                          <th className="px-6 py-4">Ultimo Acesso</th>
+                          <th className="px-6 py-4 text-right">Acoes</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredTeamUsers.map((user) => {
+                          const theme = roleCardThemes[user.role] ?? {
+                            avatar: 'bg-indigo-600 text-white'
+                          };
+                          return (
+                            <tr key={user.id} className="transition-colors hover:bg-slate-50/80">
+                              <td className="px-6 py-5">
+                                <div className="flex items-center gap-3">
+                                  <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold ${theme.avatar}`}>
+                                    {user.name.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <p className="font-semibold text-slate-900">{user.name}</p>
+                                    <div className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
+                                      <Mail size={11} />
+                                      <span>{user.email}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-5">
+                                <span
+                                  className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium ${
+                                    roleStyles[user.role] ?? 'bg-slate-100 text-slate-600 border-slate-200'
+                                  }`}
+                                >
+                                  {user.role}
+                                </span>
+                              </td>
+                              <td className="px-6 py-5">
+                                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[user.status]}`}>
+                                  <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80"></span>
+                                  {user.status}
+                                </span>
+                              </td>
+                              <td className="px-6 py-5 text-sm text-slate-500">{formatLastAccess(user.lastAccessAt)}</td>
+                              <td className="px-6 py-5">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    onClick={() => handleEditTeamUser(user)}
+                                    className="rounded-lg p-2 text-slate-400 transition hover:bg-indigo-50 hover:text-indigo-600"
+                                    title="Editar"
+                                  >
+                                    <Pencil size={16} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteTeamUser(user.id)}
+                                    className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                                    title="Excluir"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {!filteredTeamUsers.length && (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">
+                              {teamLoading ? 'Carregando equipe...' : 'Nenhum usuario encontrado.'}
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
+              )}
 
-                <div className="px-4 pb-4">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <span className="text-xs font-medium text-slate-600">Cargos cadastrados</span>
-                    <span className="text-xs text-slate-400">{teamRoleCards.length} perfil(is)</span>
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                    {teamRoleCards.map((role) => (
-                      <div key={role.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+              {teamView === 'roles' && (
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 xl:grid-cols-3">
+                  {teamRoleCards.map((role) => {
+                    const theme = roleCardThemes[role.name] ?? {
+                      iconWrap: 'bg-indigo-100',
+                      iconColor: 'text-indigo-600',
+                      badge: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+                      border: 'border-slate-200'
+                    };
+                    const isSystemRole = defaultSystemRoles.has(role.name);
+                    return (
+                      <div
+                        key={role.id}
+                        className={`rounded-2xl border bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${theme.border}`}
+                      >
                         <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-sm font-semibold text-slate-900">{role.name}</p>
-                              <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200">
-                                {role.linkedUsers} usuario(s)
-                              </span>
+                          <div className="flex items-start gap-3">
+                            <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${theme.iconWrap}`}>
+                              <ShieldAlert size={18} className={theme.iconColor} />
                             </div>
-                            <p className="mt-1 text-xs text-slate-500">
-                              {role.permissions.length} permissao(oes) liberadas
-                            </p>
+                            <div>
+                              <h3 className="text-lg font-semibold text-slate-900">{role.name}</h3>
+                              <p className="text-xs text-slate-500">
+                                {isSystemRole ? 'Sistema (Padrao)' : 'Personalizado'}
+                              </p>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1">
                             <button
                               onClick={() => handleEditRole(role)}
-                              className="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
+                              className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
                               title="Editar cargo"
                             >
-                              <Pencil size={15} />
+                              <Pencil size={16} />
                             </button>
                             <button
                               onClick={() => handleDeleteRole(role)}
                               disabled={roleBusyId === role.id}
-                              className="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 transition hover:border-red-200 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
                               title={role.linkedUsers > 0 ? 'Cargo em uso nao pode ser excluido' : 'Excluir cargo'}
                             >
-                              <Trash2 size={15} />
+                              <Trash2 size={16} />
                             </button>
                           </div>
                         </div>
-                        <div className="mt-3 flex flex-wrap gap-2">
+
+                        <p className="mt-4 text-sm leading-6 text-slate-600">
+                          {role.name === 'Admin Master'
+                            ? 'Acesso total e irrestrito a todos os modulos, configuracoes e dados financeiros da plataforma.'
+                            : role.name === 'Financeiro'
+                            ? 'Acesso aos modulos de faturamento, planos, assinaturas, dashboard e estatisticas.'
+                            : role.name === 'Suporte'
+                            ? 'Acesso aos chamados, tickets, lista de restaurantes e consumidores para atendimento.'
+                            : role.name === 'Operacao'
+                            ? 'Cargo para operacao administrativa com foco em acompanhamento e suporte operacional.'
+                            : 'Cargo com permissoes customizadas criado manualmente.'}
+                        </p>
+
+                        <div className="mt-4 flex flex-wrap gap-2">
                           {role.permissions.map((permissionId) => {
                             const permissionLabel =
                               allPermissions.find((permission) => permission.id === permissionId)?.label ?? permissionId;
                             return (
                               <span
                                 key={`${role.id}_${permissionId}`}
-                                className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600"
+                                className={`rounded-md border px-2.5 py-1 text-[11px] font-medium ${theme.badge}`}
                               >
                                 {permissionLabel}
                               </span>
@@ -3345,77 +3516,10 @@ export default function AdminPage() {
                           })}
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50 text-slate-500 font-medium">
-                      <tr>
-                        <th className="px-6 py-3">USUARIO</th>
-                        <th className="px-6 py-3">CARGO / FUNCAO</th>
-                        <th className="px-6 py-3">STATUS</th>
-                        <th className="px-6 py-3">ULTIMO ACESSO</th>
-                        <th className="px-6 py-3 text-right">ACOES</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {filteredTeamUsers.map((user) => (
-                        <tr key={user.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="h-10 w-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-semibold">
-                                {user.name.charAt(0).toUpperCase()}
-                              </div>
-                              <div>
-                                <p className="font-semibold text-slate-900">{user.name}</p>
-                                <p className="text-xs text-slate-500">{user.email}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${roleStyles[user.role] ?? 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                              {user.role}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${statusStyles[user.status]}`}>
-                              {user.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-slate-500">{formatLastAccess(user.lastAccessAt)}</td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => handleEditTeamUser(user)}
-                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                                title="Editar"
-                              >
-                                <Pencil size={16} />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteTeamUser(user.id)}
-                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="Excluir"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                      {!filteredTeamUsers.length && (
-                        <tr>
-                          <td colSpan={5} className="px-6 py-8 text-center text-sm text-slate-500">
-                            {teamLoading ? 'Carregando equipe...' : 'Nenhum usuario encontrado.'}
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              )}
             </div>
           )}
 
