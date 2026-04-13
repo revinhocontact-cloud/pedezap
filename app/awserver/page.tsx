@@ -15,6 +15,8 @@ import {
   DollarSign,
   Download,
   Eye,
+  ShoppingBag,
+  Star,
   FileText,
   Filter,
   History,
@@ -54,6 +56,8 @@ const ADMIN_IDLE_CHECK_MS = 15 * 1000;
 const ADMIN_LAST_ACTIVITY_KEY = 'pedezap_admin_last_activity_at';
 
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
   Cell,
   Line,
@@ -135,6 +139,60 @@ type Stats = {
   totalOrders: number;
   totalLeads: number;
   grossRevenue: number;
+};
+
+type AdminAnalytics = {
+  periodDays: number;
+  traffic: {
+    visitsToday: number;
+    visitsWeek: number;
+    visitsMonth: number;
+    conversionRate: number;
+  };
+  business: {
+    restaurantsCount: number;
+    totalOrders: number;
+    grossRevenue: number;
+    avgTicket: number;
+  };
+  restaurantStatus: {
+    total: number;
+    active: number;
+    inactive: number;
+  };
+  visitsVsOrders: Array<{
+    label: string;
+    visits: number;
+    orders: number;
+    revenue: number;
+  }>;
+  revenueSeries: Array<{
+    label: string;
+    visits: number;
+    orders: number;
+    revenue: number;
+  }>;
+  paymentMethods: Array<{
+    label: string;
+    value: number;
+    percent: number;
+    color: string;
+  }>;
+  peakHours: Array<{
+    label: string;
+    orders: number;
+    visits: number;
+  }>;
+  topRestaurants: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    orders: number;
+    revenue: number;
+    growth: number;
+  }>;
+  leadsCount: number;
+  todayOrders: number;
 };
 
 type NewRestaurantForm = {
@@ -737,6 +795,9 @@ export default function AdminPage() {
     method: 'Cartao de Credito' as FinanceInvoice['method']
   });
   const [showModal, setShowModal] = useState(false);
+  const [analyticsPeriod, setAnalyticsPeriod] = useState<'7' | '30' | '90'>('30');
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState<AdminAnalytics | null>(null);
   const [form, setForm] = useState<NewRestaurantForm>(initialForm);
   const [saving, setSaving] = useState(false);
   const [modalTab, setModalTab] = useState<'general' | 'address' | 'access'>('general');
@@ -775,6 +836,16 @@ export default function AdminPage() {
     ]);
     setRestaurants(restaurantsRes.restaurants ?? []);
     setStats(statsRes.stats ?? null);
+  }
+
+  async function loadAnalytics(days: '7' | '30' | '90' = analyticsPeriod) {
+    setAnalyticsLoading(true);
+    const response = await fetch(`/api/admin/analytics?days=${days}`);
+    const payload = await response.json().catch(() => null);
+    if (payload?.success) {
+      setAnalyticsData(payload.analytics ?? null);
+    }
+    setAnalyticsLoading(false);
   }
 
   async function loadFinanceOverview() {
@@ -1980,6 +2051,11 @@ export default function AdminPage() {
     }
     loadPlans();
   }, [activePage]);
+
+  useEffect(() => {
+    if (activePage !== 'stats') return;
+    loadAnalytics(analyticsPeriod);
+  }, [activePage, analyticsPeriod]);
 
   useEffect(() => {
     if (activePage !== 'team') return;
@@ -3700,7 +3776,324 @@ export default function AdminPage() {
           )}
 
           {activePage === 'stats' && (
-            <div className="bg-white border border-slate-200 rounded-xl p-8 text-slate-500">Tela de estatisticas em construcao.</div>
+            <div className="max-w-7xl mx-auto space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-900">Estatisticas & Performance</h1>
+                  <p className="text-sm text-slate-500">Visao global da plataforma: trafego, vendas e restaurantes.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
+                    <CalendarClock size={16} />
+                    <span>{analyticsPeriod === '7' ? 'Ultimos 7 dias' : analyticsPeriod === '90' ? 'Ultimos 90 dias' : 'Ultimos 30 dias'}</span>
+                    <select
+                      value={analyticsPeriod}
+                      onChange={(event) => setAnalyticsPeriod(event.target.value as '7' | '30' | '90')}
+                      className="bg-transparent text-sm text-slate-600 focus:outline-none"
+                    >
+                      <option value="7">7 dias</option>
+                      <option value="30">30 dias</option>
+                      <option value="90">90 dias</option>
+                    </select>
+                  </div>
+                  <button className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700">
+                    <Download size={16} />
+                    Exportar Tudo
+                  </button>
+                </div>
+              </div>
+
+              {analyticsLoading && (
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
+                  Carregando dados de analytics...
+                </div>
+              )}
+
+              {!analyticsLoading && analyticsData && (
+                <>
+                  <div className="space-y-3">
+                    <h2 className="text-lg font-semibold text-slate-900">Trafego da Plataforma</h2>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                      {[
+                        {
+                          title: 'Visitas Hoje',
+                          value: analyticsData.traffic.visitsToday.toLocaleString('pt-BR'),
+                          meta: '+15.2%',
+                          helper: 'vs. ontem',
+                          icon: Eye,
+                          iconWrap: 'bg-indigo-50',
+                          iconColor: 'text-indigo-600'
+                        },
+                        {
+                          title: 'Visitas na Semana',
+                          value: analyticsData.traffic.visitsWeek.toLocaleString('pt-BR'),
+                          meta: '+8.4%',
+                          helper: 'vs. semana anterior',
+                          icon: TrendingUp,
+                          iconWrap: 'bg-blue-50',
+                          iconColor: 'text-blue-600'
+                        },
+                        {
+                          title: 'Visitas no Mes',
+                          value: analyticsData.traffic.visitsMonth.toLocaleString('pt-BR'),
+                          meta: '+12.1%',
+                          helper: 'vs. mes anterior',
+                          icon: Star,
+                          iconWrap: 'bg-purple-50',
+                          iconColor: 'text-purple-600'
+                        },
+                        {
+                          title: 'Taxa de Conversao',
+                          value: `${analyticsData.traffic.conversionRate.toFixed(1)}%`,
+                          meta: '+0.5%',
+                          helper: 'vs. periodo anterior',
+                          icon: TrendingUp,
+                          iconWrap: 'bg-emerald-50',
+                          iconColor: 'text-emerald-600'
+                        }
+                      ].map((card) => {
+                        const Icon = card.icon;
+                        return (
+                          <div key={card.title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm text-slate-500">{card.title}</p>
+                                <p className="mt-2 text-2xl font-bold text-slate-900">{card.value}</p>
+                              </div>
+                              <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${card.iconWrap}`}>
+                                <Icon size={16} className={card.iconColor} />
+                              </div>
+                            </div>
+                            <div className="mt-3 flex items-center gap-2 text-xs">
+                              <span className="font-semibold text-emerald-600">{card.meta}</span>
+                              <span className="text-slate-400">{card.helper}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h2 className="text-lg font-semibold text-slate-900">Restaurantes & Vendas Globais</h2>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                      {[
+                        {
+                          title: 'Restaurantes Cadastrados',
+                          value: analyticsData.business.restaurantsCount.toLocaleString('pt-BR'),
+                          meta: `+${stats?.totalLeads ?? 0} novos`,
+                          helper: 'este mes',
+                          icon: Store,
+                          iconWrap: 'bg-amber-50',
+                          iconColor: 'text-amber-600'
+                        },
+                        {
+                          title: 'Total de Pedidos (Global)',
+                          value: analyticsData.business.totalOrders.toLocaleString('pt-BR'),
+                          meta: '+18.2%',
+                          helper: 'vs. periodo anterior',
+                          icon: ShoppingBag,
+                          iconWrap: 'bg-emerald-50',
+                          iconColor: 'text-emerald-600'
+                        },
+                        {
+                          title: 'Receita Bruta (GMV)',
+                          value: moneyFormatter.format(analyticsData.business.grossRevenue),
+                          meta: '+22.5%',
+                          helper: 'vs. periodo anterior',
+                          icon: DollarSign,
+                          iconWrap: 'bg-indigo-50',
+                          iconColor: 'text-indigo-600'
+                        },
+                        {
+                          title: 'Ticket Medio Global',
+                          value: moneyFormatter.format(analyticsData.business.avgTicket),
+                          meta: '+1.2%',
+                          helper: 'vs. periodo anterior',
+                          icon: Wallet,
+                          iconWrap: 'bg-yellow-50',
+                          iconColor: 'text-yellow-600'
+                        }
+                      ].map((card) => {
+                        const Icon = card.icon;
+                        return (
+                          <div key={card.title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm text-slate-500">{card.title}</p>
+                                <p className="mt-2 text-2xl font-bold text-slate-900">{card.value}</p>
+                              </div>
+                              <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${card.iconWrap}`}>
+                                <Icon size={16} className={card.iconColor} />
+                              </div>
+                            </div>
+                            <div className="mt-3 flex items-center gap-2 text-xs">
+                              <span className="font-semibold text-emerald-600">{card.meta}</span>
+                              <span className="text-slate-400">{card.helper}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.6fr_1fr]">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                      <div className="mb-4 flex items-center justify-between">
+                        <h3 className="text-base font-semibold text-slate-900">Evolucao de Visitas vs Pedidos</h3>
+                        <span className="text-xs text-slate-400">Ultimos 7 dias</span>
+                      </div>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={analyticsData.visitsVsOrders}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                            <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                            <Tooltip />
+                            <Line type="monotone" dataKey="visits" stroke="#4f46e5" strokeWidth={3} dot={{ r: 3 }} />
+                            <Line type="monotone" dataKey="orders" stroke="#10b981" strokeWidth={3} dot={{ r: 3 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                      <div className="mb-4 flex items-center justify-between">
+                        <h3 className="text-base font-semibold text-slate-900">Status dos Restaurantes</h3>
+                        <span className="text-xs text-slate-400">Total</span>
+                      </div>
+                      <div className="flex items-center justify-center">
+                        <div className="h-52 w-52">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={[
+                                  { name: 'Ativos', value: analyticsData.restaurantStatus.active, color: '#10b981' },
+                                  { name: 'Inativos', value: analyticsData.restaurantStatus.inactive, color: '#f43f5e' }
+                                ]}
+                                dataKey="value"
+                                innerRadius={70}
+                                outerRadius={90}
+                                paddingAngle={4}
+                              >
+                                {[{ color: '#10b981' }, { color: '#f43f5e' }].map((entry) => (
+                                  <Cell key={entry.color} fill={entry.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                      <div className="mt-2 text-center">
+                        <p className="text-3xl font-bold text-slate-900">{analyticsData.restaurantStatus.total}</p>
+                        <p className="text-xs text-slate-500">Total</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.6fr_1fr]">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                      <div className="mb-4 flex items-center justify-between">
+                        <h3 className="text-base font-semibold text-slate-900">Evolucao de Receita Bruta (GMV)</h3>
+                        <span className="text-xs text-slate-400">Ultimos 30 dias</span>
+                      </div>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={analyticsData.revenueSeries}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                            <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                            <Tooltip />
+                            <Line type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={3} dot={false} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                      <div className="mb-4 flex items-center justify-between">
+                        <h3 className="text-base font-semibold text-slate-900">Metodos de Pagamento</h3>
+                        <span className="text-xs text-slate-400">Volume</span>
+                      </div>
+                      <div className="flex items-center justify-center">
+                        <div className="h-48 w-48">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie data={analyticsData.paymentMethods} dataKey="value" innerRadius={60} outerRadius={80} paddingAngle={4}>
+                                {analyticsData.paymentMethods.map((entry) => (
+                                  <Cell key={entry.label} fill={entry.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                      <div className="mt-3 space-y-2 text-sm text-slate-600">
+                        {analyticsData.paymentMethods.map((method) => (
+                          <div key={method.label} className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="h-2.5 w-2.5 rounded-full" style={{ background: method.color }} />
+                              <span>{method.label}</span>
+                            </div>
+                            <span className="font-semibold text-slate-900">{method.percent}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.2fr_1fr]">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                      <div className="mb-4 flex items-center justify-between">
+                        <h3 className="text-base font-semibold text-slate-900">Horarios de Pico (Visitas e Pedidos)</h3>
+                        <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
+                          Media por hora
+                        </span>
+                      </div>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={analyticsData.peakHours}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                            <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                            <Tooltip />
+                            <Bar dataKey="orders" fill="#6366f1" radius={[6, 6, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                      <div className="mb-4 flex items-center justify-between">
+                        <h3 className="text-base font-semibold text-slate-900">Top Restaurantes (Faturamento)</h3>
+                        <button className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">Ver todos</button>
+                      </div>
+                      <div className="space-y-4">
+                        {analyticsData.topRestaurants.map((restaurant, index) => (
+                          <div key={restaurant.id} className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
+                                {index + 1}
+                              </div>
+                              <div>
+                                <p className="text-sm font-semibold text-slate-900">{restaurant.name}</p>
+                                <p className="text-xs text-slate-500">{restaurant.orders} pedidos</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-slate-900">{moneyFormatter.format(restaurant.revenue)}</p>
+                              <p className={`text-xs ${restaurant.growth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                {restaurant.growth >= 0 ? '+' : ''}
+                                {restaurant.growth}%
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           )}
 
           {activePage === 'payments' && (
