@@ -90,6 +90,7 @@ type PageId =
   | 'restaurants'
   | 'leads'
   | 'financial'
+  | 'plans'
   | 'payments'
   | 'stats'
   | 'team'
@@ -386,8 +387,7 @@ const initialForm: NewRestaurantForm = {
 const financeTabs = [
   { id: 'overview', label: 'Visao Geral' },
   { id: 'invoices', label: 'Faturas & Cobrancas' },
-  { id: 'delinquency', label: 'Inadimplencia' },
-  { id: 'plans', label: 'Planos' }
+  { id: 'delinquency', label: 'Inadimplencia' }
 ];
 
 const masterTabOptions: Array<{ value: PlanMasterTab; label: string }> = [
@@ -454,7 +454,8 @@ const menuItems = [
   { id: 'dashboard' as PageId, label: 'Dashboard', icon: LayoutDashboard },
   { id: 'restaurants' as PageId, label: 'Restaurantes', icon: Store },
   { id: 'leads' as PageId, label: 'Onboarding / Leads', icon: Users },
-  { id: 'financial' as PageId, label: 'Financeiro & Planos', icon: CreditCard },
+  { id: 'financial' as PageId, label: 'Financeiro', icon: CreditCard },
+  { id: 'plans' as PageId, label: 'Planos', icon: Wallet },
   { id: 'stats' as PageId, label: 'Estatisticas', icon: LayoutDashboard },
   { id: 'team' as PageId, label: 'Equipe & Acessos', icon: ShieldAlert },
   { id: 'support' as PageId, label: 'Suporte & Tickets', icon: LifeBuoy },
@@ -465,7 +466,7 @@ const menuItems = [
 const menuGroups = [
   { id: 'overview', label: 'Visao Geral', items: ['dashboard', 'stats'] as PageId[] },
   { id: 'operation', label: 'Operacao', items: ['restaurants', 'leads'] as PageId[] },
-  { id: 'finance', label: 'Financeiro', items: ['financial'] as PageId[] },
+  { id: 'finance', label: 'Financeiro', items: ['financial', 'plans'] as PageId[] },
   { id: 'admin', label: 'Administrativo', items: ['team', 'support'] as PageId[] },
   { id: 'system', label: 'Sistema', items: ['settings', 'security'] as PageId[] }
 ];
@@ -506,6 +507,7 @@ export default function AdminPage() {
   const [financeStatus, setFinanceStatus] = useState<'all' | 'Pago' | 'Pendente' | 'Vencido' | 'Estornado'>('all');
   const [financePage, setFinancePage] = useState(1);
   const [showFinanceModal, setShowFinanceModal] = useState(false);
+  const [plansSearch, setPlansSearch] = useState('');
   const [invoiceSharePayload, setInvoiceSharePayload] = useState<InvoiceSharePayload | null>(null);
   const [openInvoiceMenuId, setOpenInvoiceMenuId] = useState<string | null>(null);
   const [plans, setPlans] = useState<AdminPlan[]>(initialPlans);
@@ -1044,7 +1046,8 @@ export default function AdminPage() {
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'restaurants', label: 'Restaurantes' },
     { id: 'leads', label: 'Onboarding / Leads' },
-    { id: 'financial', label: 'Financeiro & Planos' },
+    { id: 'financial', label: 'Financeiro' },
+    { id: 'plans', label: 'Planos' },
     { id: 'stats', label: 'Estatisticas' },
     { id: 'team', label: 'Equipe & Acessos' },
     { id: 'support', label: 'Suporte & Tickets' },
@@ -1965,10 +1968,18 @@ export default function AdminPage() {
     if (activeFinanceTab === 'delinquency') {
       loadDelinquencyInvoices();
     }
-    if (activeFinanceTab === "plans") {
-      loadPlans();
-    }
   }, [activePage, activeFinanceTab]);
+
+  useEffect(() => {
+    if (activePage !== 'plans') return;
+    if (!financeOverview) {
+      loadFinanceOverview();
+    }
+    if (!restaurants.length) {
+      loadData();
+    }
+    loadPlans();
+  }, [activePage]);
 
   useEffect(() => {
     if (activePage !== 'team') return;
@@ -2360,6 +2371,57 @@ export default function AdminPage() {
     const totalByOverview = financeOverview?.planDistribution?.find((item) => item.name === plan.name)?.value;
     return typeof totalByOverview === 'number' ? totalByOverview : plan.subscribers;
   };
+  const activeSubscriptionsCount = restaurants.filter((restaurant) => {
+    const status = restaurant.subscriptionStatus ?? 'expired';
+    return status === 'active' || status === 'trial' || status === 'pending_payment';
+  }).length;
+  const filteredPlansOverviewRows = restaurants
+    .filter((restaurant) => {
+      const q = plansSearch.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        restaurant.name.toLowerCase().includes(q) ||
+        restaurant.slug.toLowerCase().includes(q) ||
+        (restaurant.subscribedPlanId ?? restaurant.plan).toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      const left = new Date(b.createdAt ?? 0).getTime();
+      const right = new Date(a.createdAt ?? 0).getTime();
+      return left - right;
+    });
+  const planOverviewCards = [
+    {
+      title: 'MRR (Receita Recorrente)',
+      value: financeOverview ? moneyFormatter.format(financeOverview.kpis.mrr) : 'R$ 0,00',
+      meta: '+8.2%',
+      helper: 'vs. mes anterior',
+      iconWrap: 'bg-indigo-50',
+      iconColor: 'text-indigo-600',
+      metaColor: 'text-emerald-600',
+      icon: TrendingUp
+    },
+    {
+      title: 'Assinaturas Ativas',
+      value: String(activeSubscriptionsCount),
+      meta: '+5',
+      helper: 'novos este mes',
+      iconWrap: 'bg-emerald-50',
+      iconColor: 'text-emerald-600',
+      metaColor: 'text-emerald-600',
+      icon: Users
+    },
+    {
+      title: 'Taxa de Inadimplencia',
+      value: `${financeOverview?.kpis.churnRate?.toFixed(1) ?? '0.0'}%`,
+      meta: '+0.5%',
+      helper: 'vs. mes anterior',
+      iconWrap: 'bg-red-50',
+      iconColor: 'text-red-500',
+      metaColor: 'text-red-500',
+      icon: AlertCircle
+    }
+  ];
 
   const roleStyles: Record<string, string> = {
     'Admin Master': 'bg-violet-100 text-violet-700 border-violet-200',
@@ -3194,90 +3256,200 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {activeFinanceTab === 'plans' && (
-                <div className="space-y-5">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-2xl font-bold text-slate-900">Planos de Assinatura</h3>
-                    <button
-                      onClick={openCreatePlanModal}
-                      className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-                    >
-                      <Plus size={16} />
-                      Novo Plano
+            </div>
+          )}
+
+          {activePage === 'plans' && (
+            <div className="max-w-7xl mx-auto space-y-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-900">Planos & Assinaturas</h1>
+                  <p className="text-sm text-slate-500">Gerencie os planos SaaS cobrados dos restaurantes e faturamento recorrente.</p>
+                </div>
+                <button
+                  onClick={openCreatePlanModal}
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700"
+                >
+                  <Plus size={16} />
+                  Novo Plano
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+                {planOverviewCards.map((card) => {
+                  const Icon = card.icon;
+                  return (
+                    <div key={card.title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm text-slate-500">{card.title}</p>
+                          <p className="mt-2 text-4xl font-black tracking-tight text-slate-900">{card.value}</p>
+                        </div>
+                        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${card.iconWrap}`}>
+                          <Icon size={18} className={card.iconColor} />
+                        </div>
+                      </div>
+                      <div className="mt-4 flex items-center gap-2 text-xs">
+                        <span className={`font-semibold ${card.metaColor}`}>{card.meta}</span>
+                        <span className="text-slate-400">{card.helper}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="space-y-4">
+                <h2 className="text-2xl font-bold text-slate-900">Planos Disponiveis</h2>
+                <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+                  {plans.map((plan) => {
+                    const subscribers = getPlanSubscribers(plan);
+                    return (
+                      <div key={plan.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <div className="flex items-start justify-between gap-3 px-5 py-5">
+                          <div>
+                            <h3 className="text-3xl font-bold tracking-tight text-slate-900">{plan.name}</h3>
+                          </div>
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                              plan.active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
+                            }`}
+                          >
+                            {plan.active ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </div>
+                        <div className="border-b border-slate-100 px-5 pb-5">
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-5xl font-black tracking-tight text-slate-900">R$ {formatPlanPrice(plan.price)}</span>
+                            <span className="text-sm text-slate-500">/mes</span>
+                          </div>
+                          <p className="mt-3 text-sm text-slate-500">
+                            + {plan.manualOrderLimitEnabled ? '3%' : plan.name === 'Premium' ? '1%' : plan.name === 'Profissional' ? '2%' : '3%'} de taxa por pedido
+                          </p>
+                        </div>
+                        <div className="px-5 py-4">
+                          <div className="flex items-center gap-2 text-sm text-slate-600">
+                            <Users size={14} className="text-slate-400" />
+                            <span>{subscribers} restaurantes assinantes</span>
+                          </div>
+                          <div className="mt-4 flex items-center gap-2">
+                            <button
+                              onClick={() => openEditPlanModal(plan)}
+                              className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                            >
+                              Editar Plano
+                            </button>
+                            <button
+                              onClick={() => handleDeletePlan(plan.id)}
+                              className="rounded-xl border border-slate-200 px-3 py-2.5 text-slate-400 transition hover:border-red-200 hover:text-red-600"
+                              title="Excluir plano"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h2 className="text-2xl font-bold text-slate-900">Assinaturas Recentes</h2>
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-4">
+                    <div className="relative w-full max-w-md">
+                      <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        value={plansSearch}
+                        onChange={(event) => setPlansSearch(event.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 py-2.5 text-sm outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-50"
+                        placeholder="Buscar por restaurante ou ID..."
+                      />
+                    </div>
+                    <button className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+                      <Filter size={14} />
+                      Filtros
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                    {plans.map((plan) => {
-                      const subscribers = getPlanSubscribers(plan);
-                      const visibleFeatures = plan.features.slice(0, 4);
-                      const extraFeatures = Math.max(0, plan.features.length - visibleFeatures.length);
-                      return (
-                        <div key={plan.id} className={`rounded-xl border border-slate-200 bg-white shadow-sm ${plan.active ? '' : 'opacity-70'}`}>
-                          <div className="h-1.5 rounded-t-xl" style={{ backgroundColor: plan.color }} />
-                          <div className="p-5">
-                            <div className="flex items-start justify-between gap-3">
-                              <h4 className="text-3xl font-bold text-slate-900">{plan.name}</h4>
-                              <span
-                                className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                                  plan.active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
-                                }`}
-                              >
-                                {plan.active ? 'Ativo' : 'Inativo'}
-                              </span>
-                            </div>
-
-                            <div className="mt-3 flex items-baseline gap-1">
-                              <span className="text-4xl font-black text-slate-900">R$ {formatPlanPrice(plan.price)}</span>
-                              <span className="text-sm text-slate-500">/mes</span>
-                            </div>
-
-                            <p className="mt-3 text-sm text-slate-600">{plan.description}</p>
-
-                            <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Beneficios</p>
-                              <div className="mt-3 space-y-2">
-                                {visibleFeatures.map((feature) => (
-                                  <div key={`${plan.id}_${feature}`} className="flex items-center gap-2 text-sm text-slate-700">
-                                    <CheckCircle2 size={14} className="text-emerald-500" />
-                                    <span>{feature}</span>
-                                  </div>
-                                ))}
-                                {extraFeatures > 0 && (
-                                  <p className="text-xs italic text-slate-500">e mais {extraFeatures} item(ns)...</p>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="mt-5 flex items-end justify-between border-t border-slate-200 pt-4">
-                              <div>
-                                <p className="text-2xl font-bold text-slate-900">{subscribers}</p>
-                                <p className="text-xs text-slate-500">Assinantes</p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => openEditPlanModal(plan)}
-                                  className="rounded-lg p-2 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600"
-                                  title="Editar plano"
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-slate-50/80 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                        <tr>
+                          <th className="px-4 py-4">ID</th>
+                          <th className="px-4 py-4">Restaurante</th>
+                          <th className="px-4 py-4">Plano</th>
+                          <th className="px-4 py-4">Valor</th>
+                          <th className="px-4 py-4">Data</th>
+                          <th className="px-4 py-4">Status</th>
+                          <th className="px-4 py-4 text-right">Acoes</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredPlansOverviewRows.slice(0, 8).map((restaurant, index) => {
+                          const relatedPlan =
+                            plans.find((plan) => plan.id === restaurant.subscribedPlanId) ??
+                            plans.find((plan) => plan.name === restaurant.plan) ??
+                            null;
+                          const subscriptionStatus = restaurant.subscriptionStatus ?? 'expired';
+                          return (
+                            <tr key={restaurant.id} className="hover:bg-slate-50/70">
+                              <td className="px-4 py-4 font-semibold text-slate-900">SUB-{String(index + 1).padStart(3, '0')}</td>
+                              <td className="px-4 py-4">
+                                <p className="font-medium text-slate-900">{restaurant.name}</p>
+                              </td>
+                              <td className="px-4 py-4 text-slate-600">{relatedPlan?.name ?? restaurant.plan}</td>
+                              <td className="px-4 py-4 font-semibold text-slate-900">
+                                {moneyFormatter.format(relatedPlan?.price ?? 0)}
+                              </td>
+                              <td className="px-4 py-4 text-slate-500">
+                                {restaurant.createdAt
+                                  ? new Date(restaurant.createdAt).toLocaleDateString('pt-BR', {
+                                      day: '2-digit',
+                                      month: 'short',
+                                      year: 'numeric'
+                                    })
+                                  : '-'}
+                              </td>
+                              <td className="px-4 py-4">
+                                <span
+                                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                                    subscriptionStatus === 'active' || subscriptionStatus === 'trial'
+                                      ? 'bg-emerald-100 text-emerald-700'
+                                      : subscriptionStatus === 'pending_payment'
+                                      ? 'bg-amber-100 text-amber-700'
+                                      : 'bg-slate-200 text-slate-600'
+                                  }`}
                                 >
-                                  <Pencil size={16} />
+                                  {subscriptionStatus === 'active'
+                                    ? 'Ativo'
+                                    : subscriptionStatus === 'trial'
+                                    ? 'Ativo'
+                                    : subscriptionStatus === 'pending_payment'
+                                    ? 'Pendente'
+                                    : 'Inativo'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-4 text-right">
+                                <button className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
+                                  <MoreVertical size={16} />
                                 </button>
-                                <button
-                                  onClick={() => handleDeletePlan(plan.id)}
-                                  className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-                                  title="Excluir plano"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {!filteredPlansOverviewRows.length && (
+                          <tr>
+                            <td colSpan={7} className="px-6 py-10 text-center text-sm text-slate-500">
+                              Nenhuma assinatura encontrada.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           )}
 
