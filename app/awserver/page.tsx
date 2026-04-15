@@ -199,6 +199,61 @@ type AdminAnalytics = {
   todayOrders: number;
 };
 
+type AdminMarketing = {
+  periodDays: number;
+  summary: {
+    landingVisitors: number;
+    leadsCaptured: number;
+    activeCampaigns: number;
+    totalCampaigns: number;
+    totalClicks: number;
+    attributedOrders: number;
+    adInvestment: number;
+    cpl: number | null;
+    clickRate: number | null;
+  };
+  trafficSeries: Array<{
+    day: string;
+    organico: number;
+    pago: number;
+    pedidos: number;
+  }>;
+  optimizations: Array<{
+    tag: string;
+    impact: 'ALTO' | 'MEDIO' | 'BAIXO';
+    title: string;
+    description: string;
+  }>;
+  seo: {
+    score: number;
+    checks: Array<{
+      label: string;
+      value: string;
+      status: 'ok' | 'warn';
+    }>;
+  };
+  keywords: Array<{
+    keyword: string;
+    position: string;
+    volume: string;
+    difficulty: string;
+  }>;
+  keywordsConnected: boolean;
+  campaigns: Array<{
+    id: string;
+    name: string;
+    restaurantName: string;
+    platform: string;
+    clicks: number;
+    attributedOrders: number;
+    couponCodes: string[];
+    status: string;
+    period: string;
+    investment: number | null;
+    cpl: number | null;
+  }>;
+};
+
 type AdminCustomerRow = {
   id: string;
   name: string;
@@ -825,6 +880,8 @@ export default function AdminPage() {
   const [analyticsPeriod, setAnalyticsPeriod] = useState<'7' | '30' | '90'>('30');
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsData, setAnalyticsData] = useState<AdminAnalytics | null>(null);
+  const [marketingLoading, setMarketingLoading] = useState(false);
+  const [marketingData, setMarketingData] = useState<AdminMarketing | null>(null);
   const [customers, setCustomers] = useState<AdminCustomerRow[]>([]);
   const [customersSummary, setCustomersSummary] = useState<AdminCustomersSummary | null>(null);
   const [customersQuery, setCustomersQuery] = useState('');
@@ -878,6 +935,18 @@ export default function AdminPage() {
       setAnalyticsData(payload.analytics ?? null);
     }
     setAnalyticsLoading(false);
+  }
+
+  async function loadMarketing() {
+    setMarketingLoading(true);
+    const response = await fetch('/api/admin/marketing?days=14');
+    const payload = await response.json().catch(() => null);
+    if (payload?.success) {
+      setMarketingData(payload.marketing ?? null);
+    } else {
+      setMarketingData(null);
+    }
+    setMarketingLoading(false);
   }
 
   async function loadCustomers() {
@@ -2104,6 +2173,11 @@ export default function AdminPage() {
     if (activePage !== 'stats') return;
     loadAnalytics(analyticsPeriod);
   }, [activePage, analyticsPeriod]);
+
+  useEffect(() => {
+    if (activePage !== 'marketing') return;
+    loadMarketing();
+  }, [activePage]);
 
   useEffect(() => {
     if (activePage !== 'customers') return;
@@ -3832,12 +3906,16 @@ export default function AdminPage() {
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <h1 className="text-2xl font-bold text-slate-900">Aquisicao B2B & Growth</h1>
-                  <p className="text-sm text-slate-500">Otimizacao de SEO, landing pages e gestao de campanhas de trafego pago (Ads).</p>
+                  <p className="text-sm text-slate-500">Dados reais de visitas, leads, pedidos atribuidos, campanhas e banners cadastrados.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                    <Search size={16} />
-                    Auditoria SEO
+                  <button
+                    onClick={loadMarketing}
+                    disabled={marketingLoading}
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <RefreshCw size={16} className={marketingLoading ? 'animate-spin' : ''} />
+                    Atualizar Dados
                   </button>
                   <button className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700">
                     <Plus size={16} />
@@ -3849,37 +3927,40 @@ export default function AdminPage() {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                 {[
                   {
-                    title: 'Visitantes (Landing Page)',
-                    value: '12.450',
-                    meta: '+15.2%',
-                    helper: 'mes anterior',
+                    title: 'Visitas Registradas',
+                    value: (marketingData?.summary.landingVisitors ?? 0).toLocaleString('pt-BR'),
+                    meta: `${marketingData?.summary.totalCampaigns ?? 0} campanhas`,
+                    helper: 'cadastradas',
                     icon: Eye,
                     iconWrap: 'bg-indigo-50',
                     iconColor: 'text-indigo-600'
                   },
                   {
                     title: 'Leads Captados',
-                    value: String(stats?.totalLeads ?? 0),
-                    meta: '+8.4%',
-                    helper: 'vs. mes anterior',
+                    value: (marketingData?.summary.leadsCaptured ?? stats?.totalLeads ?? 0).toLocaleString('pt-BR'),
+                    meta: `${marketingData?.summary.activeCampaigns ?? 0} ativas`,
+                    helper: 'agora',
                     icon: Target,
                     iconWrap: 'bg-emerald-50',
                     iconColor: 'text-emerald-600'
                   },
                   {
-                    title: 'Custo por Lead (CPL)',
-                    value: moneyFormatter.format(24.5),
-                    meta: '-12.1%',
-                    helper: 'CPL reduziu (otimo)',
+                    title: 'Pedidos Atribuidos',
+                    value: (marketingData?.summary.attributedOrders ?? 0).toLocaleString('pt-BR'),
+                    meta: `${marketingData?.summary.totalClicks ?? 0} cliques`,
+                    helper: 'campanhas + banners',
                     icon: TrendingUp,
                     iconWrap: 'bg-amber-50',
                     iconColor: 'text-amber-600'
                   },
                   {
                     title: 'Investimento em Ads',
-                    value: moneyFormatter.format(10412),
-                    meta: 'Orcamento: R$ 15k',
-                    helper: '69% consumido',
+                    value:
+                      marketingData && marketingData.summary.adInvestment > 0
+                        ? moneyFormatter.format(marketingData.summary.adInvestment)
+                        : 'Nao configurado',
+                    meta: marketingData?.summary.cpl ? `CPL ${moneyFormatter.format(marketingData.summary.cpl)}` : 'Sem gasto real',
+                    helper: 'registrado no sistema',
                     icon: Star,
                     iconWrap: 'bg-violet-50',
                     iconColor: 'text-violet-600'
@@ -3909,31 +3990,24 @@ export default function AdminPage() {
               <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.7fr_0.8fr]">
                 <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                   <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-lg font-bold text-slate-900">Trafego da Landing Page (Organico vs Pago)</h2>
-                    <span className="text-xs text-slate-500">Ultimos 14 dias</span>
+                    <h2 className="text-lg font-bold text-slate-900">Pedidos por Origem Registrada</h2>
+                    <span className="text-xs text-slate-500">Ultimos {marketingData?.periodDays ?? 14} dias</span>
                   </div>
                   <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={[
-                          { day: '01/Mar', organico: 120, pago: 350 },
-                          { day: '03/Mar', organico: 135, pago: 410 },
-                          { day: '05/Mar', organico: 148, pago: 385 },
-                          { day: '07/Mar', organico: 175, pago: 520 },
-                          { day: '09/Mar', organico: 190, pago: 500 },
-                          { day: '11/Mar', organico: 210, pago: 590 },
-                          { day: '13/Mar', organico: 250, pago: 650 }
-                        ]}
-                      >
+                      <LineChart data={marketingData?.trafficSeries ?? []}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                         <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
                         <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
                         <Tooltip />
-                        <Line type="monotone" dataKey="organico" stroke="#10b981" strokeWidth={3} dot={false} name="Trafego Organico (SEO)" />
-                        <Line type="monotone" dataKey="pago" stroke="#6366f1" strokeWidth={3} dot={false} name="Trafego Pago (Ads)" />
+                        <Line type="monotone" dataKey="organico" stroke="#10b981" strokeWidth={3} dot={false} name="Organico / direto" />
+                        <Line type="monotone" dataKey="pago" stroke="#6366f1" strokeWidth={3} dot={false} name="Pago / UTM" />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
+                  <p className="mt-3 text-xs text-slate-400">
+                    O grafico usa pedidos reais com UTM, banner ou campanha atribuida. Visitas historicas por dia dependem de tracking dedicado.
+                  </p>
                 </div>
 
                 <div className="rounded-2xl bg-gradient-to-b from-indigo-900 to-slate-950 p-5 text-white shadow-xl">
@@ -3944,19 +4018,21 @@ export default function AdminPage() {
                     <h2 className="text-lg font-bold">Assistente de Otimizacao</h2>
                   </div>
                   <div className="space-y-3">
-                    {[
-                      ['SEO', 'IMPACTO ALTO', 'Otimizar Meta Title da Landing Page', 'A tag title atual tem 75 caracteres. Reduzir para ate 60 para evitar cortes no Google.'],
-                      ['GOOGLE ADS', 'IMPACTO ALTO', 'Aumentar lance em "app de delivery proprio"', 'Sua campanha esta perdendo 15% de parcela de impressao por orcamento nesta palavra.'],
-                      ['META ADS', 'IMPACTO MEDIO', 'Fadiga de Criativo Detectada', 'O anuncio de video "Vantagens PedeZap" passou de 3.5 de frequencia. Sugerimos trocar o criativo.']
-                    ].map(([tag, impact, title, text]) => (
-                      <div key={title} className="rounded-xl border border-white/10 bg-white/10 p-4">
+                    {(marketingData?.optimizations.length ? marketingData.optimizations : [
+                      {
+                        tag: 'OK',
+                        impact: 'BAIXO' as const,
+                        title: 'Nenhum alerta critico agora',
+                        description: 'Os dados atuais nao apontam uma acao urgente. Continue acompanhando campanhas e UTMs.'
+                      }
+                    ]).map((item) => (
+                      <div key={`${item.tag}_${item.title}`} className="rounded-xl border border-white/10 bg-white/10 p-4">
                         <div className="mb-2 flex items-center justify-between gap-3">
-                          <span className="rounded-md bg-emerald-400/20 px-2 py-1 text-[10px] font-bold text-emerald-200">{tag}</span>
-                          <span className="text-[10px] font-bold text-amber-300">{impact}</span>
+                          <span className="rounded-md bg-emerald-400/20 px-2 py-1 text-[10px] font-bold text-emerald-200">{item.tag}</span>
+                          <span className="text-[10px] font-bold text-amber-300">IMPACTO {item.impact}</span>
                         </div>
-                        <h3 className="text-sm font-bold">{title}</h3>
-                        <p className="mt-2 text-xs leading-5 text-slate-200">{text}</p>
-                        <button className="mt-3 text-xs font-semibold text-indigo-200 hover:text-white">Aplicar Otimizacao</button>
+                        <h3 className="text-sm font-bold">{item.title}</h3>
+                        <p className="mt-2 text-xs leading-5 text-slate-200">{item.description}</p>
                       </div>
                     ))}
                   </div>
@@ -3972,27 +4048,26 @@ export default function AdminPage() {
                   <div className="flex justify-center">
                     <div className="flex h-32 w-32 items-center justify-center rounded-full border-[10px] border-emerald-500">
                       <div className="text-center">
-                        <p className="text-3xl font-black text-slate-900">92</p>
+                        <p className="text-3xl font-black text-slate-900">{marketingData?.seo.score ?? 0}</p>
                         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Score</p>
                       </div>
                     </div>
                   </div>
                   <div className="mt-6 space-y-3">
-                    {[
-                      ['Velocidade Mobile (LCP)', '1.2s', 'ok'],
-                      ['Tags H1 e H2', 'Otimizado', 'ok'],
-                      ['Meta Description', 'Revisar', 'warn']
-                    ].map(([label, value, status]) => (
+                    {(marketingData?.seo.checks ?? []).map((check) => (
                       <div
-                        key={label}
+                        key={check.label}
                         className={`flex items-center justify-between rounded-lg border px-3 py-2 text-xs ${
-                          status === 'ok' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'
+                          check.status === 'ok' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'
                         }`}
                       >
-                        <span>{label}</span>
-                        <span className="font-semibold">{value}</span>
+                        <span>{check.label}</span>
+                        <span className="font-semibold">{check.value}</span>
                       </div>
                     ))}
+                    {!marketingData?.seo.checks.length && (
+                      <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-xs text-slate-500">Carregando metricas reais...</p>
+                    )}
                   </div>
                 </div>
 
@@ -4002,83 +4077,91 @@ export default function AdminPage() {
                       <Activity size={16} className="text-indigo-600" />
                       <h2 className="text-lg font-bold text-slate-900">Ranking de Palavras-Chave</h2>
                     </div>
-                    <button className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">Ver Relatorio Completo</button>
+                    <button className="text-xs font-semibold text-slate-400" disabled>
+                      Search Console nao conectado
+                    </button>
                   </div>
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      <tr>
-                        <th className="px-4 py-4 text-left">Palavra-chave</th>
-                        <th className="px-4 py-4 text-left">Posicao (Google)</th>
-                        <th className="px-4 py-4 text-left">Volume Mensal</th>
-                        <th className="px-4 py-4 text-left">Dificuldade</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {[
-                        ['sistema para delivery', '3o', '12.100 buscas', 'Alta'],
-                        ['app de delivery proprio', '1o', '8.400 buscas', 'Media'],
-                        ['como montar um delivery', '12o', '22.000 buscas', 'Alta'],
-                        ['cardapio digital gratis', '5o', '45.000 buscas', 'Muito Alta']
-                      ].map(([keyword, position, volume, difficulty]) => (
-                        <tr key={keyword} className="hover:bg-slate-50/70">
-                          <td className="px-4 py-4 font-semibold text-slate-900">{keyword}</td>
-                          <td className="px-4 py-4 font-bold text-slate-900">{position}</td>
-                          <td className="px-4 py-4 text-slate-600">{volume}</td>
-                          <td className="px-4 py-4">
-                            <span className={`rounded-md px-2 py-1 text-xs font-semibold ${difficulty === 'Media' ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700'}`}>
-                              {difficulty}
-                            </span>
-                          </td>
+                  {marketingData?.keywordsConnected && marketingData.keywords.length > 0 ? (
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                        <tr>
+                          <th className="px-4 py-4 text-left">Palavra-chave</th>
+                          <th className="px-4 py-4 text-left">Posicao (Google)</th>
+                          <th className="px-4 py-4 text-left">Volume Mensal</th>
+                          <th className="px-4 py-4 text-left">Dificuldade</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {marketingData.keywords.map((keyword) => (
+                          <tr key={keyword.keyword} className="hover:bg-slate-50/70">
+                            <td className="px-4 py-4 font-semibold text-slate-900">{keyword.keyword}</td>
+                            <td className="px-4 py-4 font-bold text-slate-900">{keyword.position}</td>
+                            <td className="px-4 py-4 text-slate-600">{keyword.volume}</td>
+                            <td className="px-4 py-4">
+                              <span className="rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">{keyword.difficulty}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="flex min-h-[220px] flex-col items-center justify-center px-6 text-center">
+                      <Search size={34} className="text-slate-300" />
+                      <h3 className="mt-3 text-sm font-bold text-slate-900">Ranking real ainda nao conectado</h3>
+                      <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
+                        Para mostrar posicao no Google, volume e dificuldade sem inventar dados, conecte Search Console ou outra ferramenta SEO.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="space-y-4">
-                <h2 className="text-lg font-bold text-slate-900">Campanhas de Trafego Pago Ativas</h2>
+                <h2 className="text-lg font-bold text-slate-900">Campanhas Cadastradas nos Restaurantes</h2>
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                   <table className="w-full text-sm">
                     <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                       <tr>
                         <th className="px-4 py-4 text-left">Campanha</th>
-                        <th className="px-4 py-4 text-left">Plataforma</th>
+                        <th className="px-4 py-4 text-left">Origem</th>
+                        <th className="px-4 py-4 text-left">Cliques</th>
+                        <th className="px-4 py-4 text-left">Pedidos Atribuidos</th>
                         <th className="px-4 py-4 text-left">Investimento</th>
-                        <th className="px-4 py-4 text-left">Leads</th>
-                        <th className="px-4 py-4 text-left">CPL</th>
                         <th className="px-4 py-4 text-left">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {[
-                        ['[Search] Fundo de Funil - Concorrentes', 'Pesquisa', 'Google Ads', 1250, 45, 'Ativo'],
-                        ['[Instagram] Retargeting - Visitantes LP', 'Video', 'Meta Ads', 840.5, 32, 'Ativo'],
-                        ['[Display] Topo de Funil - Donos de Restaurante', 'Display', 'Google Ads', 450, 8, 'Pausado'],
-                        ['[Facebook] Lookalike 1% - Clientes Ativos', 'Imagem', 'Meta Ads', 1100, 55, 'Ativo']
-                      ].map(([name, kind, platform, investment, leads, status]) => {
-                        const numericInvestment = Number(investment);
-                        const numericLeads = Number(leads);
-                        return (
-                          <tr key={String(name)} className="hover:bg-slate-50/70">
-                            <td className="px-4 py-4">
-                              <p className="font-semibold text-slate-900">{name}</p>
-                              <p className="text-xs text-slate-500">{kind}</p>
-                            </td>
-                            <td className="px-4 py-4">
-                              <span className="rounded-md bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700">{platform}</span>
-                            </td>
-                            <td className="px-4 py-4 text-slate-900">{moneyFormatter.format(numericInvestment)}</td>
-                            <td className="px-4 py-4 font-semibold text-emerald-700">{numericLeads}</td>
-                            <td className="px-4 py-4 text-slate-900">{moneyFormatter.format(numericInvestment / Math.max(numericLeads, 1))}</td>
-                            <td className="px-4 py-4">
-                              <span className={`rounded-md px-2 py-1 text-xs font-semibold ${status === 'Ativo' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                                {status}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                      {(marketingData?.campaigns ?? []).map((campaign) => (
+                        <tr key={campaign.id} className="hover:bg-slate-50/70">
+                          <td className="px-4 py-4">
+                            <p className="font-semibold text-slate-900">{campaign.name}</p>
+                            <p className="text-xs text-slate-500">{campaign.restaurantName} - {campaign.period}</p>
+                            {campaign.couponCodes.length > 0 && (
+                              <p className="mt-1 text-xs text-indigo-600">Cupons: {campaign.couponCodes.join(', ')}</p>
+                            )}
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className="rounded-md bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700">{campaign.platform}</span>
+                          </td>
+                          <td className="px-4 py-4 font-semibold text-slate-900">{campaign.clicks.toLocaleString('pt-BR')}</td>
+                          <td className="px-4 py-4 font-semibold text-emerald-700">{campaign.attributedOrders.toLocaleString('pt-BR')}</td>
+                          <td className="px-4 py-4 text-slate-500">
+                            {campaign.investment !== null ? moneyFormatter.format(campaign.investment) : 'Nao configurado'}
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className={`rounded-md px-2 py-1 text-xs font-semibold ${campaign.status === 'Ativa' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                              {campaign.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                      {!marketingData?.campaigns.length && (
+                        <tr>
+                          <td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-500">
+                            Nenhuma campanha cadastrada ainda. Quando os restaurantes criarem campanhas no painel master, elas aparecem aqui com metricas reais.
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
