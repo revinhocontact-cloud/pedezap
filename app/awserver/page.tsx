@@ -25,6 +25,7 @@ import {
   ListChecks,
   Lock,
   Mail,
+  Megaphone,
   MapPin,
   MoreVertical,
   Pencil,
@@ -35,6 +36,7 @@ import {
   RefreshCcw,
   Search,
   Settings,
+  Target,
   ShieldOff,
   ShieldAlert,
   SlidersHorizontal,
@@ -94,6 +96,7 @@ type PageId =
   | 'restaurants'
   | 'customers'
   | 'leads'
+  | 'marketing'
   | 'financial'
   | 'plans'
   | 'payments'
@@ -535,6 +538,7 @@ const menuItems = [
   { id: 'restaurants' as PageId, label: 'Restaurantes', icon: Store },
   { id: 'customers' as PageId, label: 'Consumidores', icon: Users },
   { id: 'leads' as PageId, label: 'Onboarding / Leads', icon: Users },
+  { id: 'marketing' as PageId, label: 'Marketing & Campanhas', icon: Megaphone },
   { id: 'financial' as PageId, label: 'Financeiro', icon: CreditCard },
   { id: 'plans' as PageId, label: 'Planos', icon: Wallet },
   { id: 'stats' as PageId, label: 'Estatisticas', icon: LayoutDashboard },
@@ -546,7 +550,7 @@ const menuItems = [
 
 const menuGroups = [
   { id: 'overview', label: 'Visao Geral', items: ['dashboard', 'stats'] as PageId[] },
-  { id: 'operation', label: 'Operacao', items: ['restaurants', 'customers', 'leads'] as PageId[] },
+  { id: 'operation', label: 'Operacao', items: ['restaurants', 'customers', 'leads', 'marketing'] as PageId[] },
   { id: 'finance', label: 'Financeiro', items: ['financial', 'plans'] as PageId[] },
   { id: 'admin', label: 'Administrativo', items: ['team', 'support'] as PageId[] },
   { id: 'system', label: 'Sistema', items: ['settings', 'security'] as PageId[] }
@@ -1160,6 +1164,7 @@ export default function AdminPage() {
     { id: 'restaurants', label: 'Restaurantes' },
     { id: 'customers', label: 'Consumidores' },
     { id: 'leads', label: 'Onboarding / Leads' },
+    { id: 'marketing', label: 'Marketing & Campanhas' },
     { id: 'financial', label: 'Financeiro' },
     { id: 'plans', label: 'Planos' },
     { id: 'stats', label: 'Estatisticas' },
@@ -3819,6 +3824,265 @@ export default function AdminPage() {
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {activePage === 'marketing' && (
+            <div className="max-w-7xl mx-auto space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-900">Aquisicao B2B & Growth</h1>
+                  <p className="text-sm text-slate-500">Otimizacao de SEO, landing pages e gestao de campanhas de trafego pago (Ads).</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                    <Search size={16} />
+                    Auditoria SEO
+                  </button>
+                  <button className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700">
+                    <Plus size={16} />
+                    Nova Campanha
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {[
+                  {
+                    title: 'Visitantes (Landing Page)',
+                    value: '12.450',
+                    meta: '+15.2%',
+                    helper: 'mes anterior',
+                    icon: Eye,
+                    iconWrap: 'bg-indigo-50',
+                    iconColor: 'text-indigo-600'
+                  },
+                  {
+                    title: 'Leads Captados',
+                    value: String(stats?.totalLeads ?? 0),
+                    meta: '+8.4%',
+                    helper: 'vs. mes anterior',
+                    icon: Target,
+                    iconWrap: 'bg-emerald-50',
+                    iconColor: 'text-emerald-600'
+                  },
+                  {
+                    title: 'Custo por Lead (CPL)',
+                    value: moneyFormatter.format(24.5),
+                    meta: '-12.1%',
+                    helper: 'CPL reduziu (otimo)',
+                    icon: TrendingUp,
+                    iconWrap: 'bg-amber-50',
+                    iconColor: 'text-amber-600'
+                  },
+                  {
+                    title: 'Investimento em Ads',
+                    value: moneyFormatter.format(10412),
+                    meta: 'Orcamento: R$ 15k',
+                    helper: '69% consumido',
+                    icon: Star,
+                    iconWrap: 'bg-violet-50',
+                    iconColor: 'text-violet-600'
+                  }
+                ].map((card) => {
+                  const CardIcon = card.icon;
+                  return (
+                    <div key={card.title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm text-slate-500">{card.title}</p>
+                          <p className="mt-2 text-2xl font-bold text-slate-900">{card.value}</p>
+                        </div>
+                        <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${card.iconWrap}`}>
+                          <CardIcon size={16} className={card.iconColor} />
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center gap-2 text-xs">
+                        <span className="font-semibold text-emerald-600">{card.meta}</span>
+                        <span className="text-slate-400">{card.helper}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.7fr_0.8fr]">
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="mb-4 flex items-center justify-between">
+                    <h2 className="text-lg font-bold text-slate-900">Trafego da Landing Page (Organico vs Pago)</h2>
+                    <span className="text-xs text-slate-500">Ultimos 14 dias</span>
+                  </div>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={[
+                          { day: '01/Mar', organico: 120, pago: 350 },
+                          { day: '03/Mar', organico: 135, pago: 410 },
+                          { day: '05/Mar', organico: 148, pago: 385 },
+                          { day: '07/Mar', organico: 175, pago: 520 },
+                          { day: '09/Mar', organico: 190, pago: 500 },
+                          { day: '11/Mar', organico: 210, pago: 590 },
+                          { day: '13/Mar', organico: 250, pago: 650 }
+                        ]}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                        <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                        <Tooltip />
+                        <Line type="monotone" dataKey="organico" stroke="#10b981" strokeWidth={3} dot={false} name="Trafego Organico (SEO)" />
+                        <Line type="monotone" dataKey="pago" stroke="#6366f1" strokeWidth={3} dot={false} name="Trafego Pago (Ads)" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-gradient-to-b from-indigo-900 to-slate-950 p-5 text-white shadow-xl">
+                  <div className="mb-5 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10">
+                      <Target size={18} />
+                    </div>
+                    <h2 className="text-lg font-bold">Assistente de Otimizacao</h2>
+                  </div>
+                  <div className="space-y-3">
+                    {[
+                      ['SEO', 'IMPACTO ALTO', 'Otimizar Meta Title da Landing Page', 'A tag title atual tem 75 caracteres. Reduzir para ate 60 para evitar cortes no Google.'],
+                      ['GOOGLE ADS', 'IMPACTO ALTO', 'Aumentar lance em "app de delivery proprio"', 'Sua campanha esta perdendo 15% de parcela de impressao por orcamento nesta palavra.'],
+                      ['META ADS', 'IMPACTO MEDIO', 'Fadiga de Criativo Detectada', 'O anuncio de video "Vantagens PedeZap" passou de 3.5 de frequencia. Sugerimos trocar o criativo.']
+                    ].map(([tag, impact, title, text]) => (
+                      <div key={title} className="rounded-xl border border-white/10 bg-white/10 p-4">
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                          <span className="rounded-md bg-emerald-400/20 px-2 py-1 text-[10px] font-bold text-emerald-200">{tag}</span>
+                          <span className="text-[10px] font-bold text-amber-300">{impact}</span>
+                        </div>
+                        <h3 className="text-sm font-bold">{title}</h3>
+                        <p className="mt-2 text-xs leading-5 text-slate-200">{text}</p>
+                        <button className="mt-3 text-xs font-semibold text-indigo-200 hover:text-white">Aplicar Otimizacao</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-5 xl:grid-cols-[0.8fr_1.6fr]">
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="mb-5 flex items-center gap-2">
+                    <Search size={16} className="text-emerald-600" />
+                    <h2 className="text-lg font-bold text-slate-900">Saude do SEO (On-Page)</h2>
+                  </div>
+                  <div className="flex justify-center">
+                    <div className="flex h-32 w-32 items-center justify-center rounded-full border-[10px] border-emerald-500">
+                      <div className="text-center">
+                        <p className="text-3xl font-black text-slate-900">92</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Score</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-6 space-y-3">
+                    {[
+                      ['Velocidade Mobile (LCP)', '1.2s', 'ok'],
+                      ['Tags H1 e H2', 'Otimizado', 'ok'],
+                      ['Meta Description', 'Revisar', 'warn']
+                    ].map(([label, value, status]) => (
+                      <div
+                        key={label}
+                        className={`flex items-center justify-between rounded-lg border px-3 py-2 text-xs ${
+                          status === 'ok' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'
+                        }`}
+                      >
+                        <span>{label}</span>
+                        <span className="font-semibold">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+                    <div className="flex items-center gap-2">
+                      <Activity size={16} className="text-indigo-600" />
+                      <h2 className="text-lg font-bold text-slate-900">Ranking de Palavras-Chave</h2>
+                    </div>
+                    <button className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">Ver Relatorio Completo</button>
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      <tr>
+                        <th className="px-4 py-4 text-left">Palavra-chave</th>
+                        <th className="px-4 py-4 text-left">Posicao (Google)</th>
+                        <th className="px-4 py-4 text-left">Volume Mensal</th>
+                        <th className="px-4 py-4 text-left">Dificuldade</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {[
+                        ['sistema para delivery', '3o', '12.100 buscas', 'Alta'],
+                        ['app de delivery proprio', '1o', '8.400 buscas', 'Media'],
+                        ['como montar um delivery', '12o', '22.000 buscas', 'Alta'],
+                        ['cardapio digital gratis', '5o', '45.000 buscas', 'Muito Alta']
+                      ].map(([keyword, position, volume, difficulty]) => (
+                        <tr key={keyword} className="hover:bg-slate-50/70">
+                          <td className="px-4 py-4 font-semibold text-slate-900">{keyword}</td>
+                          <td className="px-4 py-4 font-bold text-slate-900">{position}</td>
+                          <td className="px-4 py-4 text-slate-600">{volume}</td>
+                          <td className="px-4 py-4">
+                            <span className={`rounded-md px-2 py-1 text-xs font-semibold ${difficulty === 'Media' ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700'}`}>
+                              {difficulty}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h2 className="text-lg font-bold text-slate-900">Campanhas de Trafego Pago Ativas</h2>
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      <tr>
+                        <th className="px-4 py-4 text-left">Campanha</th>
+                        <th className="px-4 py-4 text-left">Plataforma</th>
+                        <th className="px-4 py-4 text-left">Investimento</th>
+                        <th className="px-4 py-4 text-left">Leads</th>
+                        <th className="px-4 py-4 text-left">CPL</th>
+                        <th className="px-4 py-4 text-left">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {[
+                        ['[Search] Fundo de Funil - Concorrentes', 'Pesquisa', 'Google Ads', 1250, 45, 'Ativo'],
+                        ['[Instagram] Retargeting - Visitantes LP', 'Video', 'Meta Ads', 840.5, 32, 'Ativo'],
+                        ['[Display] Topo de Funil - Donos de Restaurante', 'Display', 'Google Ads', 450, 8, 'Pausado'],
+                        ['[Facebook] Lookalike 1% - Clientes Ativos', 'Imagem', 'Meta Ads', 1100, 55, 'Ativo']
+                      ].map(([name, kind, platform, investment, leads, status]) => {
+                        const numericInvestment = Number(investment);
+                        const numericLeads = Number(leads);
+                        return (
+                          <tr key={String(name)} className="hover:bg-slate-50/70">
+                            <td className="px-4 py-4">
+                              <p className="font-semibold text-slate-900">{name}</p>
+                              <p className="text-xs text-slate-500">{kind}</p>
+                            </td>
+                            <td className="px-4 py-4">
+                              <span className="rounded-md bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700">{platform}</span>
+                            </td>
+                            <td className="px-4 py-4 text-slate-900">{moneyFormatter.format(numericInvestment)}</td>
+                            <td className="px-4 py-4 font-semibold text-emerald-700">{numericLeads}</td>
+                            <td className="px-4 py-4 text-slate-900">{moneyFormatter.format(numericInvestment / Math.max(numericLeads, 1))}</td>
+                            <td className="px-4 py-4">
+                              <span className={`rounded-md px-2 py-1 text-xs font-semibold ${status === 'Ativo' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                                {status}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           )}
 
