@@ -92,6 +92,7 @@ function resolveBackupPreview(payload: unknown): { generatedAt: string | null; s
 type PageId =
   | 'dashboard'
   | 'restaurants'
+  | 'customers'
   | 'leads'
   | 'financial'
   | 'plans'
@@ -193,6 +194,27 @@ type AdminAnalytics = {
   }>;
   leadsCount: number;
   todayOrders: number;
+};
+
+type AdminCustomerRow = {
+  id: string;
+  name: string;
+  email: string;
+  whatsapp: string;
+  restaurantSlug: string;
+  restaurantName: string;
+  totalOrders: number;
+  totalSpent: number;
+  lastOrderAt?: string | null;
+  createdAt: string;
+  status: 'Ativo' | 'VIP' | 'Bloqueado';
+};
+
+type AdminCustomersSummary = {
+  total: number;
+  active30d: number;
+  avgLtv: number;
+  blocked: number;
 };
 
 type NewRestaurantForm = {
@@ -511,6 +533,7 @@ const financeStatusStyles: Record<string, string> = {
 const menuItems = [
   { id: 'dashboard' as PageId, label: 'Dashboard', icon: LayoutDashboard },
   { id: 'restaurants' as PageId, label: 'Restaurantes', icon: Store },
+  { id: 'customers' as PageId, label: 'Consumidores', icon: Users },
   { id: 'leads' as PageId, label: 'Onboarding / Leads', icon: Users },
   { id: 'financial' as PageId, label: 'Financeiro', icon: CreditCard },
   { id: 'plans' as PageId, label: 'Planos', icon: Wallet },
@@ -523,7 +546,7 @@ const menuItems = [
 
 const menuGroups = [
   { id: 'overview', label: 'Visao Geral', items: ['dashboard', 'stats'] as PageId[] },
-  { id: 'operation', label: 'Operacao', items: ['restaurants', 'leads'] as PageId[] },
+  { id: 'operation', label: 'Operacao', items: ['restaurants', 'customers', 'leads'] as PageId[] },
   { id: 'finance', label: 'Financeiro', items: ['financial', 'plans'] as PageId[] },
   { id: 'admin', label: 'Administrativo', items: ['team', 'support'] as PageId[] },
   { id: 'system', label: 'Sistema', items: ['settings', 'security'] as PageId[] }
@@ -798,6 +821,11 @@ export default function AdminPage() {
   const [analyticsPeriod, setAnalyticsPeriod] = useState<'7' | '30' | '90'>('30');
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsData, setAnalyticsData] = useState<AdminAnalytics | null>(null);
+  const [customers, setCustomers] = useState<AdminCustomerRow[]>([]);
+  const [customersSummary, setCustomersSummary] = useState<AdminCustomersSummary | null>(null);
+  const [customersQuery, setCustomersQuery] = useState('');
+  const [customersStatusFilter, setCustomersStatusFilter] = useState<'all' | AdminCustomerRow['status']>('all');
+  const [customersLoading, setCustomersLoading] = useState(false);
   const [form, setForm] = useState<NewRestaurantForm>(initialForm);
   const [saving, setSaving] = useState(false);
   const [modalTab, setModalTab] = useState<'general' | 'address' | 'access'>('general');
@@ -846,6 +874,20 @@ export default function AdminPage() {
       setAnalyticsData(payload.analytics ?? null);
     }
     setAnalyticsLoading(false);
+  }
+
+  async function loadCustomers() {
+    setCustomersLoading(true);
+    const params = new URLSearchParams();
+    if (customersQuery.trim()) params.set('q', customersQuery.trim());
+    if (customersStatusFilter !== 'all') params.set('status', customersStatusFilter);
+    const response = await fetch(`/api/admin/customers?${params.toString()}`);
+    const payload = await response.json().catch(() => null);
+    if (payload?.success) {
+      setCustomers(payload.customers ?? []);
+      setCustomersSummary(payload.summary ?? null);
+    }
+    setCustomersLoading(false);
   }
 
   async function loadFinanceOverview() {
@@ -1116,6 +1158,7 @@ export default function AdminPage() {
   const allPermissions = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'restaurants', label: 'Restaurantes' },
+    { id: 'customers', label: 'Consumidores' },
     { id: 'leads', label: 'Onboarding / Leads' },
     { id: 'financial', label: 'Financeiro' },
     { id: 'plans', label: 'Planos' },
@@ -2056,6 +2099,14 @@ export default function AdminPage() {
     if (activePage !== 'stats') return;
     loadAnalytics(analyticsPeriod);
   }, [activePage, analyticsPeriod]);
+
+  useEffect(() => {
+    if (activePage !== 'customers') return;
+    const timeout = window.setTimeout(() => {
+      loadCustomers();
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [activePage, customersQuery, customersStatusFilter]);
 
   useEffect(() => {
     if (activePage !== 'team') return;
@@ -3768,6 +3819,184 @@ export default function AdminPage() {
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {activePage === 'customers' && (
+            <div className="max-w-7xl mx-auto space-y-6">
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900">Consumidores</h1>
+                <p className="text-sm text-slate-500">Gestao de usuarios finais, historico de compras e controle de fraudes.</p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {[
+                  {
+                    title: 'Total de Usuarios',
+                    value: (customersSummary?.total ?? 0).toLocaleString('pt-BR'),
+                    meta: '+1.204',
+                    helper: 'este mes',
+                    icon: Users,
+                    iconWrap: 'bg-indigo-50',
+                    iconColor: 'text-indigo-600',
+                    metaColor: 'text-emerald-600'
+                  },
+                  {
+                    title: 'Usuarios Ativos (30d)',
+                    value: (customersSummary?.active30d ?? 0).toLocaleString('pt-BR'),
+                    meta: '56%',
+                    helper: 'da base total',
+                    icon: Users,
+                    iconWrap: 'bg-emerald-50',
+                    iconColor: 'text-emerald-600',
+                    metaColor: 'text-emerald-600'
+                  },
+                  {
+                    title: 'LTV Medio',
+                    value: moneyFormatter.format(customersSummary?.avgLtv ?? 0),
+                    meta: '+R$ 15,00',
+                    helper: 'vs. ano passado',
+                    icon: TrendingUp,
+                    iconWrap: 'bg-indigo-50',
+                    iconColor: 'text-indigo-600',
+                    metaColor: 'text-emerald-600'
+                  },
+                  {
+                    title: 'Contas Bloqueadas',
+                    value: (customersSummary?.blocked ?? 0).toLocaleString('pt-BR'),
+                    meta: '+42',
+                    helper: 'esta semana',
+                    icon: ShieldAlert,
+                    iconWrap: 'bg-red-50',
+                    iconColor: 'text-red-500',
+                    metaColor: 'text-red-500'
+                  }
+                ].map((card) => {
+                  const Icon = card.icon;
+                  return (
+                    <div key={card.title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm text-slate-500">{card.title}</p>
+                          <p className="mt-2 text-2xl font-bold text-slate-900">{card.value}</p>
+                        </div>
+                        <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${card.iconWrap}`}>
+                          <Icon size={16} className={card.iconColor} />
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center gap-2 text-xs">
+                        <span className={`font-semibold ${card.metaColor}`}>{card.meta}</span>
+                        <span className="text-slate-400">{card.helper}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-4">
+                  <div className="relative w-full max-w-md">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      value={customersQuery}
+                      onChange={(event) => setCustomersQuery(event.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 py-2.5 text-sm outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-50"
+                      placeholder="Buscar por nome, email, telefone ou ID..."
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <select
+                        value={customersStatusFilter}
+                        onChange={(event) => setCustomersStatusFilter(event.target.value as typeof customersStatusFilter)}
+                        className="rounded-xl border border-slate-200 bg-white py-2 pl-8 pr-8 text-sm text-slate-600 outline-none hover:bg-slate-50"
+                      >
+                        <option value="all">Filtros</option>
+                        <option value="Ativo">Ativos</option>
+                        <option value="VIP">VIP</option>
+                        <option value="Bloqueado">Bloqueados</option>
+                      </select>
+                    </div>
+                    <button className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-100">
+                      <ShieldAlert size={14} />
+                      Prevencao a Fraude
+                    </button>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50/80 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      <tr>
+                        <th className="px-4 py-4">Usuario</th>
+                        <th className="px-4 py-4">Contato</th>
+                        <th className="px-4 py-4">Pedidos</th>
+                        <th className="px-4 py-4">Total Gasto</th>
+                        <th className="px-4 py-4">Cadastro</th>
+                        <th className="px-4 py-4">Status</th>
+                        <th className="px-4 py-4 text-right">Acoes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {customers.map((customer) => (
+                        <tr key={customer.id} className="hover:bg-slate-50/70">
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-sm font-bold text-slate-600">
+                                {customer.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-slate-900">{customer.name}</p>
+                                <p className="text-[11px] text-slate-500">{customer.id}</p>
+                                <p className="text-[11px] text-slate-400">{customer.restaurantName}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <p className="text-sm text-slate-700">{customer.email}</p>
+                            <p className="text-xs text-slate-500">{customer.whatsapp}</p>
+                          </td>
+                          <td className="px-4 py-4 text-slate-600">{customer.totalOrders}</td>
+                          <td className="px-4 py-4 font-semibold text-emerald-700">{moneyFormatter.format(customer.totalSpent)}</td>
+                          <td className="px-4 py-4 text-slate-500">
+                            {new Date(customer.createdAt).toLocaleDateString('pt-BR', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
+                          </td>
+                          <td className="px-4 py-4">
+                            <span
+                              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                                customer.status === 'VIP'
+                                  ? 'bg-amber-100 text-amber-700'
+                                  : customer.status === 'Bloqueado'
+                                  ? 'bg-red-100 text-red-700'
+                                  : 'bg-emerald-100 text-emerald-700'
+                              }`}
+                            >
+                              {customer.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 text-right">
+                            <button className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
+                              <MoreVertical size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {!customers.length && (
+                        <tr>
+                          <td colSpan={7} className="px-6 py-10 text-center text-sm text-slate-500">
+                            {customersLoading ? 'Carregando consumidores...' : 'Nenhum consumidor encontrado.'}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           )}
 
