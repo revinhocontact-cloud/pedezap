@@ -2827,7 +2827,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-                <div className="flex-1 overflow-y-auto py-6 px-4 space-y-4">
+                <div className="scrollbar-soft flex-1 overflow-y-auto py-6 px-4 space-y-4">
           {menuGroups.map((group) => {
             const groupItems = allowedMenuItems.filter((item) => group.items.includes(item.id));
             if (!groupItems.length) return null;
@@ -2915,7 +2915,7 @@ export default function AdminPage() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-8">
+        <main className="scrollbar-soft flex-1 overflow-y-auto p-8">
           {activePage === 'dashboard' && (
             <div className="max-w-7xl mx-auto space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
@@ -5682,35 +5682,73 @@ export default function AdminPage() {
             </div>
           )}
 
-                    {activePage === 'settings' && (
-            <div className="max-w-6xl mx-auto space-y-6">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl font-bold text-slate-900">Configuracoes Globais</h1>
-                  <p className="text-sm text-slate-500">Ajustes gerais do painel e comunicacoes da plataforma.</p>
-                </div>
+          {activePage === 'settings' && (
+            <div className="mx-auto max-w-7xl space-y-6">
+              <div className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-slate-950 p-6 text-white shadow-xl shadow-slate-200/70">
+                <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-emerald-400/20 blur-3xl" />
+                <div className="absolute bottom-0 left-1/3 h-40 w-40 rounded-full bg-indigo-500/20 blur-3xl" />
+                <div className="relative flex flex-wrap items-center justify-between gap-5">
+                  <div className="max-w-2xl">
+                    <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold text-emerald-200">
+                      <Settings size={14} />
+                      Centro de controle
+                    </div>
+                    <h1 className="text-3xl font-black tracking-tight">Configuracoes Globais</h1>
+                    <p className="mt-2 text-sm leading-6 text-slate-300">
+                      Ajuste identidade, notificacoes, integracoes, Twilio, seguranca e backups da plataforma em um unico lugar.
+                    </p>
+                  </div>
                 {settingsTab !== 'backup' ? (
                   <button
                     onClick={saveAdminSettings}
-                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
+                    disabled={settingsSaving}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-black/20 transition hover:-translate-y-0.5 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    <Download size={16} />
+                    <Check size={16} />
                     {settingsSaving ? 'Salvando...' : 'Salvar Alteracoes'}
                   </button>
                 ) : (
                   <button
                     onClick={exportSystemBackup}
                     disabled={backupBusyAction !== null}
-                    className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-black/20 transition hover:-translate-y-0.5 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     <Download size={16} />
                     {backupBusyAction === 'export' ? 'Exportando...' : 'Exportar Backup'}
                   </button>
                 )}
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-2 h-fit">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                {[
+                  { label: 'Sistema', value: settingsForm.platformName || 'PedeZap', icon: LayoutDashboard, tone: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
+                  { label: 'Backup', value: backupPreview ? 'Arquivo carregado' : 'Pronto para exportar', icon: Download, tone: 'bg-blue-50 text-blue-700 border-blue-100' },
+                  { label: 'Twilio', value: settingsForm.integrations.twilio.connected ? 'Conectado' : 'Desconectado', icon: MessageCircle, tone: settingsForm.integrations.twilio.connected ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-50 text-slate-600 border-slate-200' }
+                ].map((item) => {
+                  const ItemIcon = item.icon;
+                  return (
+                    <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/60">
+                      <div className="flex items-center gap-3">
+                        <div className={`flex h-11 w-11 items-center justify-center rounded-xl border ${item.tone}`}>
+                          <ItemIcon size={18} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{item.label}</p>
+                          <p className="mt-1 text-sm font-bold text-slate-900">{item.value}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
+                <div className="h-fit rounded-[24px] border border-slate-200 bg-white/90 p-3 shadow-sm shadow-slate-200/70 backdrop-blur">
+                  <div className="mb-3 rounded-2xl bg-slate-50 px-4 py-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Modulos</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">Escolha o que deseja ajustar</p>
+                  </div>
                     {[
                       { id: 'general', label: 'General', icon: SlidersHorizontal },
                       { id: 'branding', label: 'Personalizacao', icon: Wand2 },
@@ -5726,22 +5764,28 @@ export default function AdminPage() {
                       <button
                         key={tab.id}
                         onClick={() => setSettingsTab(tab.id as typeof settingsTab)}
-                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          isActive ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-50'
+                        className={`group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-all ${
+                          isActive
+                            ? 'bg-slate-950 text-white shadow-lg shadow-slate-900/10'
+                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                         }`}
                       >
-                        <Icon size={16} />
-                        {tab.label}
+                        <span className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${
+                          isActive ? 'bg-emerald-400 text-slate-950' : 'bg-slate-100 text-slate-400 group-hover:text-slate-700'
+                        }`}>
+                          <Icon size={16} />
+                        </span>
+                        <span>{tab.label}</span>
                       </button>
                     );
                   })}
-                  <div className="pt-4 mt-4 border-t border-slate-100 text-xs text-slate-500">
-                    Versao do Sistema
-                    <div className="text-slate-700 font-semibold">{settingsForm.versionLabel}</div>
+                  <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">
+                    <p className="font-semibold text-slate-400">Versao do Sistema</p>
+                    <div className="mt-1 text-sm font-bold text-slate-800">{settingsForm.versionLabel}</div>
                   </div>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-6">
+                <div className="settings-surface rounded-[24px] border border-slate-200 bg-white/95 p-6 shadow-sm shadow-slate-200/70">
                   {settingsTab === 'general' && (
                     <>
                       <div>
