@@ -3,19 +3,7 @@ import { readStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-function syntheticEmail(name: string, whatsapp: string) {
-  const slug = name
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, ".")
-    .replace(/^\.+|\.+$/g, "");
-  const suffix = whatsapp.replace(/\D/g, "").slice(-4) || "user";
-  return `${slug || "cliente"}.${suffix}@cliente.pedezap`;
-}
-
 function customerStatus(customer: { totalOrders: number; totalSpent: number }) {
-  if (customer.totalOrders <= 0) return "Bloqueado";
   if (customer.totalOrders >= 25 || customer.totalSpent >= 1000) return "VIP";
   return "Ativo";
 }
@@ -34,7 +22,7 @@ export async function GET(request: Request) {
       return {
         id: customer.id,
         name: customer.name,
-        email: syntheticEmail(customer.name, customer.whatsapp),
+        email: null,
         whatsapp: customer.whatsapp,
         restaurantSlug: customer.restaurantSlug,
         restaurantName: restaurant?.name ?? customer.restaurantSlug,
@@ -49,7 +37,6 @@ export async function GET(request: Request) {
       const matchesQuery =
         !query ||
         customer.name.toLowerCase().includes(query) ||
-        customer.email.toLowerCase().includes(query) ||
         customer.whatsapp.toLowerCase().includes(query) ||
         customer.id.toLowerCase().includes(query) ||
         customer.restaurantName.toLowerCase().includes(query);
@@ -69,21 +56,25 @@ export async function GET(request: Request) {
     const lastOrderAt = customer.lastOrderAt ? new Date(customer.lastOrderAt) : null;
     return !!lastOrderAt && lastOrderAt >= thirtyDaysAgo;
   }).length;
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const newThisMonth = store.customers.filter((customer) => new Date(customer.createdAt) >= currentMonthStart).length;
+  const vip = store.customers.filter((customer) => customerStatus(customer) === "VIP").length;
   const avgLtv =
     store.customers.length > 0
       ? store.customers.reduce((sum, customer) => sum + customer.totalSpent, 0) / store.customers.length
       : 0;
-  const blocked = store.customers.filter((customer) => customerStatus(customer) === "Bloqueado").length;
 
   return NextResponse.json({
     success: true,
     summary: {
       total: store.customers.length,
       active30d,
+      activePercent: store.customers.length ? Math.round((active30d / store.customers.length) * 100) : 0,
+      newThisMonth,
       avgLtv,
-      blocked
+      vip,
+      blocked: 0
     },
     customers: enrichedCustomers
   });
 }
-

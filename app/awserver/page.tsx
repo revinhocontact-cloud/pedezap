@@ -145,6 +145,39 @@ type Stats = {
   grossRevenue: number;
 };
 
+type AdminDashboard = {
+  updatedAt: string;
+  kpis: {
+    activeRestaurants: { value: number; change: number };
+    monthlyRevenue: { value: number; change: number };
+    orders24h: { value: number; change: number };
+    pendingTickets: { value: number; newThisMonth: number; change: number };
+  };
+  growth: {
+    periodLabel: string;
+    orderChange: number;
+    series: Array<{
+      day: string;
+      orders: number;
+      restaurants: number;
+    }>;
+  };
+  alerts: Array<{
+    id: string;
+    tone: 'red' | 'amber' | 'blue';
+    text: string;
+    href: PageId;
+  }>;
+  topRestaurants: Array<{
+    id: string;
+    name: string;
+    plan: string;
+    status: 'Ativo' | 'Inativo';
+    ordersMonth: number;
+    revenue: number;
+  }>;
+};
+
 type AdminAnalytics = {
   periodDays: number;
   traffic: {
@@ -257,7 +290,7 @@ type AdminMarketing = {
 type AdminCustomerRow = {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
   whatsapp: string;
   restaurantSlug: string;
   restaurantName: string;
@@ -265,13 +298,16 @@ type AdminCustomerRow = {
   totalSpent: number;
   lastOrderAt?: string | null;
   createdAt: string;
-  status: 'Ativo' | 'VIP' | 'Bloqueado';
+  status: 'Ativo' | 'VIP';
 };
 
 type AdminCustomersSummary = {
   total: number;
   active30d: number;
+  activePercent: number;
+  newThisMonth: number;
   avgLtv: number;
+  vip: number;
   blocked: number;
 };
 
@@ -637,6 +673,8 @@ export default function AdminPage() {
   const [activeFinanceTab, setActiveFinanceTab] = useState('overview');
   const [restaurants, setRestaurants] = useState<AdminRestaurant[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [dashboardData, setDashboardData] = useState<AdminDashboard | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'Ativo' | 'Inativo'>('all');
   const [financeOverview, setFinanceOverview] = useState<FinanceOverview | null>(null);
@@ -925,6 +963,18 @@ export default function AdminPage() {
     ]);
     setRestaurants(restaurantsRes.restaurants ?? []);
     setStats(statsRes.stats ?? null);
+  }
+
+  async function loadDashboard() {
+    setDashboardLoading(true);
+    const response = await fetch('/api/admin/dashboard');
+    const payload = await response.json().catch(() => null);
+    if (payload?.success) {
+      setDashboardData(payload.dashboard ?? null);
+    } else {
+      setDashboardData(null);
+    }
+    setDashboardLoading(false);
   }
 
   async function loadAnalytics(days: '7' | '30' | '90' = analyticsPeriod) {
@@ -2159,6 +2209,11 @@ export default function AdminPage() {
   }, [activePage, activeFinanceTab]);
 
   useEffect(() => {
+    if (activePage !== 'dashboard') return;
+    loadDashboard();
+  }, [activePage]);
+
+  useEffect(() => {
     if (activePage !== 'plans') return;
     if (!financeOverview) {
       loadFinanceOverview();
@@ -2292,6 +2347,20 @@ export default function AdminPage() {
   const walletBalance = gatewayBalance ?? 0;
   const filteredPayoutRequests = payouts;
   const filteredPayoutHistory = payouts;
+  const dashboardUpdatedAt = dashboardData?.updatedAt
+    ? new Date(dashboardData.updatedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    : '--:--';
+  const formatTrend = (value: number) => `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`;
+  const dashboardAlertStyles: Record<AdminDashboard['alerts'][number]['tone'], string> = {
+    red: 'border-red-100 bg-red-50 text-red-700',
+    amber: 'border-amber-100 bg-amber-50 text-amber-700',
+    blue: 'border-blue-100 bg-blue-50 text-blue-700'
+  };
+  const dashboardAlertIconStyles: Record<AdminDashboard['alerts'][number]['tone'], string> = {
+    red: 'text-red-500',
+    amber: 'text-amber-500',
+    blue: 'text-blue-500'
+  };
 
   async function toggleRestaurantStatus(slug: string, active: boolean) {
     const response = await fetch(`/api/admin/restaurants/${slug}/status`, {
@@ -2848,62 +2917,202 @@ export default function AdminPage() {
 
         <main className="flex-1 overflow-y-auto p-8">
           {activePage === 'dashboard' && (
-            <div className="space-y-8 max-w-7xl mx-auto">
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Visao Geral</h1>
-                <p className="text-slate-500 mt-1">Bem-vindo de volta! Aqui esta o que esta acontecendo hoje.</p>
+            <div className="max-w-7xl mx-auto space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Visao Geral</h1>
+                  <p className="mt-1 text-slate-500">Acompanhe os principais indicadores reais da sua plataforma.</p>
+                </div>
+                <button
+                  onClick={loadDashboard}
+                  disabled={dashboardLoading}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-100 bg-white px-5 py-2.5 text-sm font-medium text-slate-600 shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <RefreshCw size={15} className={dashboardLoading ? 'animate-spin text-emerald-600' : 'text-slate-400'} />
+                  Ultima atualizacao:
+                  <span className="font-bold text-emerald-700">{dashboardUpdatedAt}</span>
+                </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-                      <Store size={24} />
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+                {[
+                  {
+                    title: 'Restaurantes Ativos',
+                    value: (dashboardData?.kpis.activeRestaurants.value ?? stats?.activeRestaurants ?? 0).toLocaleString('pt-BR'),
+                    trend: formatTrend(dashboardData?.kpis.activeRestaurants.change ?? 0),
+                    helper: 'vs. mes passado',
+                    icon: Store,
+                    color: 'bg-indigo-600',
+                    trendColor: (dashboardData?.kpis.activeRestaurants.change ?? 0) >= 0 ? 'text-emerald-600 bg-emerald-50' : 'text-red-600 bg-red-50'
+                  },
+                  {
+                    title: 'Receita do Mes',
+                    value: moneyFormatter.format(dashboardData?.kpis.monthlyRevenue.value ?? stats?.grossRevenue ?? 0),
+                    trend: formatTrend(dashboardData?.kpis.monthlyRevenue.change ?? 0),
+                    helper: 'vs. mes passado',
+                    icon: DollarSign,
+                    color: 'bg-emerald-600',
+                    trendColor: (dashboardData?.kpis.monthlyRevenue.change ?? 0) >= 0 ? 'text-emerald-600 bg-emerald-50' : 'text-red-600 bg-red-50'
+                  },
+                  {
+                    title: 'Pedidos (24h)',
+                    value: (dashboardData?.kpis.orders24h.value ?? 0).toLocaleString('pt-BR'),
+                    trend: formatTrend(dashboardData?.kpis.orders24h.change ?? 0),
+                    helper: 'vs. 24h anteriores',
+                    icon: ShoppingBag,
+                    color: 'bg-blue-600',
+                    trendColor: (dashboardData?.kpis.orders24h.change ?? 0) >= 0 ? 'text-emerald-600 bg-emerald-50' : 'text-red-600 bg-red-50'
+                  },
+                  {
+                    title: 'Tickets Pendentes',
+                    value: (dashboardData?.kpis.pendingTickets.value ?? 0).toLocaleString('pt-BR'),
+                    trend: `${dashboardData?.kpis.pendingTickets.newThisMonth ?? 0} novos`,
+                    helper: 'neste mes',
+                    icon: FileText,
+                    color: 'bg-amber-600',
+                    trendColor: (dashboardData?.kpis.pendingTickets.newThisMonth ?? 0) > 0 ? 'text-red-600 bg-red-50' : 'text-emerald-600 bg-emerald-50'
+                  }
+                ].map((card) => {
+                  const CardIcon = card.icon;
+                  return (
+                    <div key={card.title} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm shadow-slate-200/60">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium text-slate-500">{card.title}</p>
+                          <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">{card.value}</h3>
+                        </div>
+                        <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-lg ${card.color}`}>
+                          <CardIcon size={19} />
+                        </div>
+                      </div>
+                      <div className="mt-4 flex items-center gap-2 text-xs">
+                        <span className={`rounded-md px-2 py-1 font-bold ${card.trendColor}`}>{card.trend}</span>
+                        <span className="text-slate-400">{card.helper}</span>
+                      </div>
                     </div>
-                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full flex items-center gap-1">
-                      <TrendingUp size={12} /> +2.5%
-                    </span>
+                  );
+                })}
+              </div>
+
+              <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.75fr_0.85fr]">
+                <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm shadow-slate-200/60">
+                  <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-lg font-bold text-slate-900">Crescimento da Plataforma</h2>
+                      <p className="text-sm text-slate-500">Volume de pedidos x novos restaurantes</p>
+                    </div>
+                    <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600">
+                      <CalendarClock size={15} />
+                      {dashboardData?.growth.periodLabel ?? 'Ultimos 7 dias'}
+                      <ChevronRight size={14} className="rotate-90 text-slate-400" />
+                    </div>
                   </div>
-                  <p className="text-slate-500 text-sm font-medium">Restaurantes Ativos</p>
-                  <h3 className="text-3xl font-bold text-slate-900 mt-1">{stats?.activeRestaurants ?? 0}</h3>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={dashboardData?.growth.series ?? []}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                        <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                        <YAxis yAxisId="orders" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} allowDecimals={false} />
+                        <YAxis yAxisId="restaurants" orientation="right" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} allowDecimals={false} />
+                        <Tooltip />
+                        <Line yAxisId="orders" type="monotone" dataKey="orders" stroke="#10b981" strokeWidth={3} dot={false} name="Pedidos" />
+                        <Line yAxisId="restaurants" type="monotone" dataKey="restaurants" stroke="#6366f1" strokeWidth={3} dot={false} name="Novos restaurantes" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
 
-                <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
-                      <CreditCard size={24} />
+                <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm shadow-slate-200/60">
+                  <div className="mb-5 flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                      <AlertCircle size={17} />
                     </div>
-                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full flex items-center gap-1">
-                      <TrendingUp size={12} /> +12%
-                    </span>
+                    <h2 className="text-lg font-bold text-slate-900">Atencao Necessaria</h2>
                   </div>
-                  <p className="text-slate-500 text-sm font-medium">Receita Estimada</p>
-                  <h3 className="text-3xl font-bold text-slate-900 mt-1">
-                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats?.grossRevenue ?? 0)}
-                  </h3>
+                  <div className="space-y-3">
+                    {(dashboardData?.alerts ?? []).map((alert) => (
+                      <button
+                        key={alert.id}
+                        onClick={() => setActivePage(alert.href)}
+                        className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm font-medium transition hover:-translate-y-0.5 hover:shadow-sm ${dashboardAlertStyles[alert.tone]}`}
+                      >
+                        <span className="flex items-center gap-3">
+                          <AlertCircle size={15} className={dashboardAlertIconStyles[alert.tone]} />
+                          {alert.text}
+                        </span>
+                        <ChevronRight size={15} />
+                      </button>
+                    ))}
+                    {!dashboardData?.alerts.length && (
+                      <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-4 text-sm font-medium text-emerald-700">
+                        Nenhum alerta aberto com os dados atuais.
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setActivePage('security')}
+                    className="mt-4 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                  >
+                    Ver Central de Alertas
+                  </button>
                 </div>
+              </div>
 
-                <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="p-3 bg-violet-50 text-violet-600 rounded-xl">
-                      <Activity size={24} />
-                    </div>
-                    <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-full">24h</span>
+              <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm shadow-slate-200/60">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-5">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900">Restaurantes em Destaque</h2>
+                    <p className="text-sm text-slate-500">Top performance real por volume de pedidos no mes</p>
                   </div>
-                  <p className="text-slate-500 text-sm font-medium">Pedidos Realizados</p>
-                  <h3 className="text-3xl font-bold text-slate-900 mt-1">{stats?.totalOrders ?? 0}</h3>
+                  <button onClick={() => setActivePage('stats')} className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">
+                    Ver Ranking Completo
+                  </button>
                 </div>
-
-                <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
-                      <Users size={24} />
-                    </div>
-                    <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-full">Novos</span>
-                  </div>
-                  <p className="text-slate-500 text-sm font-medium">Leads Capturados</p>
-                  <h3 className="text-3xl font-bold text-slate-900 mt-1">{stats?.totalLeads ?? 0}</h3>
-                </div>
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    <tr>
+                      <th className="px-5 py-4 text-left">Ranking</th>
+                      <th className="px-5 py-4 text-left">Restaurante</th>
+                      <th className="px-5 py-4 text-left">Plano</th>
+                      <th className="px-5 py-4 text-right">Pedidos (Mes)</th>
+                      <th className="px-5 py-4 text-right">Receita</th>
+                      <th className="px-5 py-4 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {(dashboardData?.topRestaurants ?? []).map((restaurant, index) => (
+                      <tr key={restaurant.id} className="hover:bg-slate-50/70">
+                        <td className="px-5 py-4">
+                          <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
+                            index === 0 ? 'bg-amber-100 text-amber-700' : index === 1 ? 'bg-slate-200 text-slate-600' : index === 2 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-500'
+                          }`}>
+                            #{index + 1}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 font-semibold text-slate-900">{restaurant.name}</td>
+                        <td className="px-5 py-4">
+                          <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">{restaurant.plan}</span>
+                        </td>
+                        <td className="px-5 py-4 text-right font-bold text-slate-900">{restaurant.ordersMonth.toLocaleString('pt-BR')}</td>
+                        <td className="px-5 py-4 text-right font-semibold text-emerald-700">{moneyFormatter.format(restaurant.revenue)}</td>
+                        <td className="px-5 py-4 text-right">
+                          <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                            restaurant.status === 'Ativo' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {restaurant.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {!dashboardData?.topRestaurants.length && (
+                      <tr>
+                        <td colSpan={6} className="px-5 py-10 text-center text-sm text-slate-500">
+                          Ainda nao existem pedidos no mes para montar o ranking real.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
@@ -4181,7 +4390,7 @@ export default function AdminPage() {
                   {
                     title: 'Total de Usuarios',
                     value: (customersSummary?.total ?? 0).toLocaleString('pt-BR'),
-                    meta: '+1.204',
+                    meta: `+${customersSummary?.newThisMonth ?? 0}`,
                     helper: 'este mes',
                     icon: Users,
                     iconWrap: 'bg-indigo-50',
@@ -4191,7 +4400,7 @@ export default function AdminPage() {
                   {
                     title: 'Usuarios Ativos (30d)',
                     value: (customersSummary?.active30d ?? 0).toLocaleString('pt-BR'),
-                    meta: '56%',
+                    meta: `${customersSummary?.activePercent ?? 0}%`,
                     helper: 'da base total',
                     icon: Users,
                     iconWrap: 'bg-emerald-50',
@@ -4201,22 +4410,22 @@ export default function AdminPage() {
                   {
                     title: 'LTV Medio',
                     value: moneyFormatter.format(customersSummary?.avgLtv ?? 0),
-                    meta: '+R$ 15,00',
-                    helper: 'vs. ano passado',
+                    meta: `${customersSummary?.total ?? 0} usuarios`,
+                    helper: 'com gasto real',
                     icon: TrendingUp,
                     iconWrap: 'bg-indigo-50',
                     iconColor: 'text-indigo-600',
                     metaColor: 'text-emerald-600'
                   },
                   {
-                    title: 'Contas Bloqueadas',
-                    value: (customersSummary?.blocked ?? 0).toLocaleString('pt-BR'),
-                    meta: '+42',
-                    helper: 'esta semana',
-                    icon: ShieldAlert,
-                    iconWrap: 'bg-red-50',
-                    iconColor: 'text-red-500',
-                    metaColor: 'text-red-500'
+                    title: 'Clientes VIP',
+                    value: (customersSummary?.vip ?? 0).toLocaleString('pt-BR'),
+                    meta: 'Base real',
+                    helper: 'por compras',
+                    icon: Star,
+                    iconWrap: 'bg-amber-50',
+                    iconColor: 'text-amber-500',
+                    metaColor: 'text-amber-600'
                   }
                 ].map((card) => {
                   const Icon = card.icon;
@@ -4248,7 +4457,7 @@ export default function AdminPage() {
                       value={customersQuery}
                       onChange={(event) => setCustomersQuery(event.target.value)}
                       className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 py-2.5 text-sm outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-50"
-                      placeholder="Buscar por nome, email, telefone ou ID..."
+                      placeholder="Buscar por nome, telefone, restaurante ou ID..."
                     />
                   </div>
                   <div className="flex items-center gap-2">
@@ -4262,12 +4471,15 @@ export default function AdminPage() {
                         <option value="all">Filtros</option>
                         <option value="Ativo">Ativos</option>
                         <option value="VIP">VIP</option>
-                        <option value="Bloqueado">Bloqueados</option>
                       </select>
                     </div>
-                    <button className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-100">
+                    <button
+                      disabled
+                      className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-400"
+                      title="Nenhum campo real de bloqueio/fraude existe no cadastro atual."
+                    >
                       <ShieldAlert size={14} />
-                      Prevencao a Fraude
+                      Fraude nao configurada
                     </button>
                   </div>
                 </div>
@@ -4301,8 +4513,8 @@ export default function AdminPage() {
                             </div>
                           </td>
                           <td className="px-4 py-4">
-                            <p className="text-sm text-slate-700">{customer.email}</p>
-                            <p className="text-xs text-slate-500">{customer.whatsapp}</p>
+                            <p className="text-sm font-medium text-slate-700">{customer.whatsapp || 'Sem telefone'}</p>
+                            <p className="text-xs text-slate-500">E-mail nao coletado no cadastro atual</p>
                           </td>
                           <td className="px-4 py-4 text-slate-600">{customer.totalOrders}</td>
                           <td className="px-4 py-4 font-semibold text-emerald-700">{moneyFormatter.format(customer.totalSpent)}</td>
@@ -4318,8 +4530,6 @@ export default function AdminPage() {
                               className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
                                 customer.status === 'VIP'
                                   ? 'bg-amber-100 text-amber-700'
-                                  : customer.status === 'Bloqueado'
-                                  ? 'bg-red-100 text-red-700'
                                   : 'bg-emerald-100 text-emerald-700'
                               }`}
                             >
