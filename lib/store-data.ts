@@ -412,6 +412,11 @@ export type AdminUser = {
   id: string;
   name: string;
   email: string;
+  avatarUrl?: string | null;
+  phone?: string | null;
+  document?: string | null;
+  jobTitle?: string | null;
+  bio?: string | null;
   role: string;
   status: AdminStatus;
   password: string;

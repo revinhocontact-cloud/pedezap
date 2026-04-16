@@ -31,9 +31,14 @@ export async function GET() {
     success: true,
     user: {
       email: payload.email,
-      name: payload.name,
-      role: payload.role,
-      permissions: payload.permissions ?? [],
+      name: user?.name ?? payload.name,
+      role: user?.role ?? payload.role,
+      permissions: user?.permissions ?? payload.permissions ?? [],
+      avatarUrl: user?.avatarUrl ?? null,
+      phone: user?.phone ?? "",
+      document: user?.document ?? "",
+      jobTitle: user?.jobTitle ?? "",
+      bio: user?.bio ?? "",
       twoFactorEnabled: !!user?.twoFactorEnabled
     }
   });

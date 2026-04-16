@@ -74,7 +74,17 @@ import {
 import { BrandLogo } from '@/components/brand-logo';
 import { buildSystemBackupSummary, type SystemBackupPayload, type SystemBackupSummary } from '@/lib/system-backup';
 
-type AdminSession = { email: string; name: string; role?: string; permissions?: string[] };
+type AdminSession = {
+  email: string;
+  name: string;
+  role?: string;
+  permissions?: string[];
+  avatarUrl?: string | null;
+  phone?: string | null;
+  document?: string | null;
+  jobTitle?: string | null;
+  bio?: string | null;
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -104,7 +114,8 @@ type PageId =
   | 'team'
   | 'support'
   | 'settings'
-  | 'security';
+  | 'security'
+  | 'profile';
 
 type AdminRestaurant = {
   id: string;
@@ -393,6 +404,32 @@ type TwilioPerformance = {
   }>;
 };
 
+type AdminNotification = {
+  id: string;
+  title: string;
+  description: string;
+  createdAt: string;
+  timeAgo: string;
+  tone: 'success' | 'warning' | 'info' | 'danger';
+  page: PageId;
+};
+
+type AdminProfile = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: 'Ativo' | 'Inativo';
+  permissions: string[];
+  avatarUrl?: string | null;
+  phone?: string | null;
+  document?: string | null;
+  jobTitle?: string | null;
+  bio?: string | null;
+  lastAccessAt?: string | null;
+  createdAt: string;
+};
+
 type AuditLogRow = {
   id: string;
   createdAt: string;
@@ -641,9 +678,9 @@ const menuItems = [
 
 const menuGroups = [
   { id: 'overview', label: 'Visao Geral', items: ['dashboard', 'stats'] as PageId[] },
-  { id: 'operation', label: 'Operacao', items: ['restaurants', 'customers', 'leads', 'marketing'] as PageId[] },
+  { id: 'operation', label: 'Operacao', items: ['restaurants', 'customers', 'leads', 'marketing', 'support'] as PageId[] },
   { id: 'finance', label: 'Financeiro', items: ['financial', 'plans'] as PageId[] },
-  { id: 'admin', label: 'Administrativo', items: ['team', 'support'] as PageId[] },
+  { id: 'admin', label: 'Administrativo', items: ['team'] as PageId[] },
   { id: 'system', label: 'Sistema', items: ['settings', 'security'] as PageId[] }
 ];
 
@@ -902,6 +939,21 @@ export default function AdminPage() {
     byDay: []
   });
   const [notificationsView, setNotificationsView] = useState<'templates' | 'dictionary'>('templates');
+  const [adminNotifications, setAdminNotifications] = useState<AdminNotification[]>([]);
+  const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    name: '',
+    phone: '',
+    document: '',
+    jobTitle: '',
+    bio: '',
+    avatarUrl: ''
+  });
+  const [profileData, setProfileData] = useState<AdminProfile | null>(null);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [templateForm, setTemplateForm] = useState({
     title: '',
@@ -1100,6 +1152,86 @@ export default function AdminPage() {
       setActiveSessionsRows([]);
     }
     setActiveSessionsLoading(false);
+  }
+
+  async function loadAdminNotifications() {
+    setNotificationsLoading(true);
+    const response = await fetch('/api/admin/notifications');
+    const payload = await response.json().catch(() => null);
+    if (response.ok && payload?.success) {
+      setAdminNotifications(payload.notifications ?? []);
+    }
+    setNotificationsLoading(false);
+  }
+
+  async function loadAdminProfile() {
+    setProfileLoading(true);
+    const response = await fetch('/api/admin/profile');
+    const payload = await response.json().catch(() => null);
+    if (response.ok && payload?.success) {
+      const profile = payload.profile as AdminProfile;
+      setProfileData(profile);
+      setProfileForm({
+        name: profile.name ?? '',
+        phone: profile.phone ?? '',
+        document: profile.document ?? '',
+        jobTitle: profile.jobTitle ?? '',
+        bio: profile.bio ?? '',
+        avatarUrl: profile.avatarUrl ?? ''
+      });
+    }
+    setProfileLoading(false);
+  }
+
+  async function saveAdminProfile() {
+    if (!profileForm.name.trim()) {
+      alert('Informe seu nome.');
+      return;
+    }
+    setProfileSaving(true);
+    const response = await fetch('/api/admin/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileForm)
+    });
+    const payload = await response.json().catch(() => null);
+    setProfileSaving(false);
+    if (!response.ok || !payload?.success) {
+      alert(payload?.message ?? 'Nao foi possivel salvar o perfil.');
+      return;
+    }
+    const profile = payload.profile as AdminProfile;
+    setProfileData(profile);
+    const nextSession = {
+      ...(session as AdminSession),
+      name: profile.name,
+      avatarUrl: profile.avatarUrl ?? null,
+      phone: profile.phone ?? '',
+      document: profile.document ?? '',
+      jobTitle: profile.jobTitle ?? '',
+      bio: profile.bio ?? ''
+    };
+    setSession(nextSession);
+    localStorage.setItem('pedezap_admin_session', JSON.stringify(nextSession));
+    alert('Perfil atualizado com sucesso.');
+  }
+
+  function handleProfilePhotoSelected(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Selecione uma imagem valida.');
+      return;
+    }
+    if (file.size > 600 * 1024) {
+      alert('Use uma imagem com ate 600KB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setProfileForm((prev) => ({ ...prev, avatarUrl: String(reader.result ?? '') }));
+    };
+    reader.readAsDataURL(file);
   }
 
   async function loadAdminTwoFactorState() {
@@ -2134,6 +2266,16 @@ export default function AdminPage() {
   useEffect(() => {
     if (!session) return;
 
+    const storedNotificationIds = localStorage.getItem('pedezap_admin_read_notifications');
+    if (storedNotificationIds) {
+      try {
+        const parsedIds = JSON.parse(storedNotificationIds);
+        if (Array.isArray(parsedIds)) {
+          setReadNotificationIds(parsedIds.filter((item): item is string => typeof item === 'string'));
+        }
+      } catch {}
+    }
+
     const ensureActivityTimestamp = () => {
       const raw = localStorage.getItem(ADMIN_LAST_ACTIVITY_KEY);
       if (!raw || !Number.isFinite(Number(raw))) {
@@ -2180,12 +2322,22 @@ export default function AdminPage() {
     };
   }, [session]);
 
-  const allowedPageIds =
+  useEffect(() => {
+    if (!session) return;
+    loadAdminNotifications();
+    const intervalId = window.setInterval(() => {
+      void loadAdminNotifications();
+    }, 60000);
+    return () => window.clearInterval(intervalId);
+  }, [session]);
+
+  const allowedBasePageIds =
     session?.role === 'Admin Master'
       ? menuItems.map((item) => item.id)
       : session?.permissions?.length
       ? session.permissions
       : menuItems.map((item) => item.id);
+  const allowedPageIds = Array.from(new Set([...allowedBasePageIds, 'profile' as PageId]));
   const allowedMenuItems = menuItems.filter((item) => allowedPageIds.includes(item.id));
 
   useEffect(() => {
@@ -2328,6 +2480,11 @@ export default function AdminPage() {
     loadActiveSessions();
   }, [activePage, sessionsScopeFilter]);
 
+  useEffect(() => {
+    if (activePage !== 'profile') return;
+    loadAdminProfile();
+  }, [activePage]);
+
   const filteredRestaurants = useMemo(() => {
     return restaurants.filter((item) => {
       const status = item.active ? 'Ativo' : 'Inativo';
@@ -2360,6 +2517,18 @@ export default function AdminPage() {
     red: 'text-red-500',
     amber: 'text-amber-500',
     blue: 'text-blue-500'
+  };
+  const unreadNotifications = adminNotifications.filter((item) => !readNotificationIds.includes(item.id));
+  const notificationToneStyles: Record<AdminNotification['tone'], { dot: string; icon: string; wrap: string }> = {
+    success: { dot: 'bg-emerald-500', icon: 'text-emerald-600', wrap: 'bg-emerald-50' },
+    warning: { dot: 'bg-amber-500', icon: 'text-amber-600', wrap: 'bg-amber-50' },
+    info: { dot: 'bg-blue-500', icon: 'text-blue-600', wrap: 'bg-blue-50' },
+    danger: { dot: 'bg-red-500', icon: 'text-red-600', wrap: 'bg-red-50' }
+  };
+  const markNotificationsAsRead = () => {
+    const nextIds = Array.from(new Set([...readNotificationIds, ...adminNotifications.map((item) => item.id)])).slice(-100);
+    setReadNotificationIds(nextIds);
+    localStorage.setItem('pedezap_admin_read_notifications', JSON.stringify(nextIds));
   };
 
   async function toggleRestaurantStatus(slug: string, active: boolean) {
@@ -2869,15 +3038,24 @@ export default function AdminPage() {
           })}
         </div>
 <div className="p-4 border-t border-slate-800 bg-slate-900/50">
-          <div className="flex items-center gap-3 mb-4 px-2">
-            <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
-              {session?.name?.charAt(0) ?? 'A'}
+          <button
+            onClick={() => setActivePage('profile')}
+            className="mb-4 flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-left transition hover:bg-slate-800/70"
+            title="Editar meu perfil"
+          >
+            <div className="h-10 w-10 overflow-hidden rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
+              {session?.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={session.avatarUrl} alt={session?.name ?? 'Perfil'} className="h-full w-full object-cover" />
+              ) : (
+                session?.name?.charAt(0) ?? 'A'
+              )}
             </div>
-            <div className="overflow-hidden">
-              <p className="text-sm font-semibold text-white truncate">{session?.name ?? 'Admin Master'}</p>
-              <p className="text-xs text-slate-500 truncate">{session?.email}</p>
+            <div className="min-w-0 overflow-hidden">
+              <p className="truncate text-sm font-semibold text-white">{session?.name ?? 'Admin Master'}</p>
+              <p className="truncate text-xs text-slate-500">{session?.jobTitle || session?.email}</p>
             </div>
-          </div>
+          </button>
           <button
             onClick={() => {
               void performAdminLogout('manual');
@@ -2892,7 +3070,7 @@ export default function AdminPage() {
       <div className="flex-1 flex flex-col overflow-hidden bg-slate-50 relative">
         <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 shadow-sm z-0">
           <div className="flex items-center gap-4 w-full max-w-xl">
-            <h2 className="text-xl font-bold text-slate-800 hidden md:block">{menuItems.find((i) => i.id === activePage)?.label || 'Dashboard'}</h2>
+            <h2 className="text-xl font-bold text-slate-800 hidden md:block">{activePage === 'profile' ? 'Meu Perfil' : menuItems.find((i) => i.id === activePage)?.label || 'Dashboard'}</h2>
             <div className="h-6 w-px bg-slate-200 hidden md:block"></div>
             <div className="relative w-full">
               <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -2907,15 +3085,234 @@ export default function AdminPage() {
               />
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <button className="relative p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+          <div className="relative flex items-center gap-4">
+            <button
+              onClick={() => {
+                setNotificationsOpen((prev) => !prev);
+                if (!notificationsOpen) void loadAdminNotifications();
+              }}
+              className="relative rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+            >
               <Bell size={20} />
-              <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border-2 border-white"></span>
+              {unreadNotifications.length > 0 && (
+                <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-white bg-red-500 px-1 text-[9px] font-bold leading-none text-white">
+                  {unreadNotifications.length > 9 ? '9+' : unreadNotifications.length}
+                </span>
+              )}
             </button>
+            {notificationsOpen && (
+              <div className="absolute right-0 top-[calc(100%+14px)] z-50 w-[360px] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-300/60">
+                <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-5 py-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-slate-900">Notificacoes</h3>
+                      {unreadNotifications.length > 0 && (
+                        <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-bold text-indigo-600">
+                          {unreadNotifications.length} novas
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">Eventos reais do painel admin</p>
+                  </div>
+                  <button
+                    onClick={markNotificationsAsRead}
+                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 disabled:text-slate-300"
+                    disabled={!unreadNotifications.length}
+                  >
+                    Marcar como lidas
+                  </button>
+                </div>
+                <div className="scrollbar-soft max-h-[320px] overflow-y-auto">
+                  {notificationsLoading && !adminNotifications.length ? (
+                    <div className="px-5 py-8 text-center text-sm text-slate-500">Carregando notificacoes...</div>
+                  ) : adminNotifications.length ? (
+                    <div className="divide-y divide-slate-100">
+                      {adminNotifications.map((notification) => {
+                        const tone = notificationToneStyles[notification.tone];
+                        const unread = !readNotificationIds.includes(notification.id);
+                        return (
+                          <button
+                            key={notification.id}
+                            onClick={() => {
+                              setActivePage(notification.page);
+                              setNotificationsOpen(false);
+                              if (notification.page === 'settings') setSettingsTab('backup');
+                            }}
+                            className="flex w-full gap-3 px-5 py-4 text-left transition hover:bg-slate-50"
+                          >
+                            <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${tone.wrap}`}>
+                              <AlertCircle size={15} className={tone.icon} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-start justify-between gap-3">
+                                <p className="text-sm font-bold text-slate-900">{notification.title}</p>
+                                {unread && <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${tone.dot}`} />}
+                              </div>
+                              <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{notification.description}</p>
+                              <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{notification.timeAgo}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="px-5 py-10 text-center">
+                      <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                        <CheckCircle2 size={20} />
+                      </div>
+                      <p className="mt-3 text-sm font-bold text-slate-900">Tudo tranquilo por aqui</p>
+                      <p className="mt-1 text-xs text-slate-500">Nenhuma notificacao real encontrada agora.</p>
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    setNotificationsOpen(false);
+                    setActivePage('security');
+                  }}
+                  className="w-full border-t border-slate-100 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                >
+                  Ver central de notificacoes
+                </button>
+              </div>
+            )}
           </div>
         </header>
 
         <main className="scrollbar-soft flex-1 overflow-y-auto p-8">
+          {activePage === 'profile' && (
+            <div className="mx-auto max-w-6xl space-y-6">
+              <div className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-slate-950 p-6 text-white shadow-xl shadow-slate-200/70">
+                <div className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald-400/20 blur-3xl" />
+                <div className="relative flex flex-wrap items-center justify-between gap-5">
+                  <div>
+                    <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold text-emerald-200">
+                      <Users size={14} />
+                      Conta do funcionario
+                    </div>
+                    <h1 className="text-3xl font-black tracking-tight">Meu Perfil</h1>
+                    <p className="mt-2 text-sm text-slate-300">
+                      Atualize suas informacoes pessoais, cargo publico e foto exibida no painel.
+                    </p>
+                  </div>
+                  <button
+                    onClick={saveAdminProfile}
+                    disabled={profileSaving || profileLoading}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-black/20 transition hover:-translate-y-0.5 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    <Check size={16} />
+                    {profileSaving ? 'Salvando...' : 'Salvar Perfil'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
+                <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/70">
+                  <div className="flex flex-col items-center text-center">
+                    <div className="relative">
+                      <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-[32px] bg-gradient-to-br from-indigo-500 to-emerald-500 text-4xl font-black text-white shadow-xl">
+                        {profileForm.avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={profileForm.avatarUrl} alt="Foto do perfil" className="h-full w-full object-cover" />
+                        ) : (
+                          (profileForm.name || session?.name || 'A').charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      <label className="absolute -bottom-3 left-1/2 flex -translate-x-1/2 cursor-pointer items-center gap-2 rounded-full bg-slate-950 px-3 py-2 text-xs font-bold text-white shadow-lg hover:bg-slate-800">
+                        <Upload size={13} />
+                        Foto
+                        <input type="file" accept="image/*" className="hidden" onChange={handleProfilePhotoSelected} />
+                      </label>
+                    </div>
+                    <h2 className="mt-8 text-xl font-bold text-slate-900">{profileForm.name || session?.name}</h2>
+                    <p className="mt-1 text-sm text-slate-500">{profileData?.email ?? session?.email}</p>
+                    <div className="mt-4 inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+                      {profileData?.role ?? session?.role ?? 'Funcionario'}
+                    </div>
+                  </div>
+
+                  <div className="mt-6 space-y-3 rounded-2xl bg-slate-50 p-4 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-slate-500">Status</span>
+                      <span className="font-semibold text-slate-900">{profileData?.status ?? 'Ativo'}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-slate-500">Ultimo acesso</span>
+                      <span className="font-semibold text-slate-900">
+                        {profileData?.lastAccessAt ? new Date(profileData.lastAccessAt).toLocaleDateString('pt-BR') : 'Agora'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="settings-surface rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/70">
+                  <div className="mb-6">
+                    <h2 className="text-xl font-bold text-slate-900">Informacoes pessoais</h2>
+                    <p className="text-sm text-slate-500">Esses dados aparecem apenas no painel administrativo.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-slate-600">Nome completo</label>
+                      <input
+                        value={profileForm.name}
+                        onChange={(event) => setProfileForm((prev) => ({ ...prev, name: event.target.value }))}
+                        className="w-full border px-3 py-2.5 text-sm"
+                        placeholder="Seu nome"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-slate-600">Cargo / funcao</label>
+                      <input
+                        value={profileForm.jobTitle}
+                        onChange={(event) => setProfileForm((prev) => ({ ...prev, jobTitle: event.target.value }))}
+                        className="w-full border px-3 py-2.5 text-sm"
+                        placeholder="Ex: Suporte, Financeiro, Operacao"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-slate-600">Telefone pessoal</label>
+                      <input
+                        value={profileForm.phone}
+                        onChange={(event) => setProfileForm((prev) => ({ ...prev, phone: event.target.value }))}
+                        className="w-full border px-3 py-2.5 text-sm"
+                        placeholder="(11) 99999-9999"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-slate-600">Documento</label>
+                      <input
+                        value={profileForm.document}
+                        onChange={(event) => setProfileForm((prev) => ({ ...prev, document: event.target.value }))}
+                        className="w-full border px-3 py-2.5 text-sm"
+                        placeholder="CPF ou documento interno"
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <label className="text-sm font-semibold text-slate-600">Sobre voce</label>
+                      <textarea
+                        value={profileForm.bio}
+                        onChange={(event) => setProfileForm((prev) => ({ ...prev, bio: event.target.value }))}
+                        className="min-h-[120px] w-full border px-3 py-2.5 text-sm"
+                        placeholder="Escreva uma breve descricao profissional..."
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <label className="text-sm font-semibold text-slate-600">URL da foto</label>
+                      <input
+                        value={profileForm.avatarUrl}
+                        onChange={(event) => setProfileForm((prev) => ({ ...prev, avatarUrl: event.target.value }))}
+                        className="w-full border px-3 py-2.5 text-sm"
+                        placeholder="Cole uma URL de imagem ou envie uma foto pelo botao ao lado"
+                      />
+                      <p className="text-xs text-slate-400">Voce tambem pode enviar uma imagem local de ate 600KB.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activePage === 'dashboard' && (
             <div className="max-w-7xl mx-auto space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
