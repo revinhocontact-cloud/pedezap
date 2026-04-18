@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, CheckCircle2, LockKeyhole, Mail, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowRight, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
 
 export default function MasterLoginPage() {
   const router = useRouter();
@@ -64,30 +64,15 @@ export default function MasterLoginPage() {
                 <p className="text-4xl font-black tracking-tight">PedeZap</p>
                 <p className="mt-1 text-xs font-bold uppercase tracking-[0.32em] text-emerald-300">Master Panel</p>
               </div>
-              <div className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold text-white/80 backdrop-blur">
-                Restaurante online
-              </div>
             </div>
 
             <div className="max-w-[620px]">
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-emerald-100 backdrop-blur">
-                <Sparkles size={16} />
-                Operacao inteligente, venda constante
-              </div>
               <h1 className="max-w-[560px] text-6xl font-black leading-[0.95] tracking-tight xl:text-7xl">
                 Gestao inteligente para restaurantes de alta performance.
               </h1>
               <p className="mt-7 max-w-xl text-xl font-medium leading-8 text-white/80">
                 Domine seus pedidos, fidelize clientes e escale sua operacao com uma central simples, rapida e preparada para crescer.
               </p>
-              <div className="mt-8 grid max-w-xl grid-cols-3 gap-3">
-                {['Pedidos', 'Cardapio', 'Clientes'].map((item) => (
-                  <div key={item} className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur">
-                    <CheckCircle2 size={17} className="text-emerald-300" />
-                    <p className="mt-2 text-sm font-bold">{item}</p>
-                  </div>
-                ))}
-              </div>
             </div>
 
             <p className="text-base text-white/75">© 2026 PedeZap Enterprise.</p>
